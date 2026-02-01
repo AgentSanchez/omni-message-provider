@@ -1,0 +1,96 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "omni-message-provider"
+version = "0.2.0"
+description = "Unified message provider interface for Discord, Slack, Jira, and custom platforms with distributed relay support"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    {name = "Adam Sanchez", email = "agentpython@proton.me"}
+]
+maintainers = [
+    {name = "Adam Sanchez", email = "agentpython@proton.me"}
+]
+keywords = ["messaging", "discord", "slack", "jira", "chatbot", "websocket", "relay"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Communications :: Chat",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
+    "pydantic>=2.0.0",
+    "httpx>=0.25.0",
+    "requests>=2.31.0",
+    "websockets>=11.0",
+    "msgpack>=1.0.0",
+]
+
+[project.optional-dependencies]
+discord = ["discord.py>=2.3.0"]
+slack = ["slack-bolt>=1.18.0", "slack-sdk>=3.23.0"]
+jira = ["jira>=3.5.0"]
+all = [
+    "discord.py>=2.3.0",
+    "slack-bolt>=1.18.0",
+    "slack-sdk>=3.23.0",
+    "jira>=3.5.0"
+]
+dev = [
+    # Test framework
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    # Code quality
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.5.0",
+    # Optional deps needed for testing
+    "discord.py>=2.3.0",
+    "slack-bolt>=1.18.0",
+    "slack-sdk>=3.23.0",
+    "jira>=3.5.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/AgentSanchez/omni-message-provider"
+Documentation = "https://github.com/AgentSanchez/omni-message-provider#readme"
+Repository = "https://github.com/AgentSanchez/omni-message-provider"
+Issues = "https://github.com/AgentSanchez/omni-message-provider/issues"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 100
+target-version = ['py39']
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["src/message_provider/tests"]

@@ -1,0 +1,112 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36" version="29.2.4">
+  <diagram name="Page-1" id="EqeYZ8uS64tJkwf4Z1v2">
+    <mxGraphModel dx="1379" dy="1121" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="800" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Single Instance&lt;div&gt;Listeners + User App&lt;/div&gt;" vertex="1">
+          <mxGeometry height="100" width="230" x="30" y="281" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-16" edge="1" parent="1" source="sHWd2lZOUrEVaoBmisMp-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="sHWd2lZOUrEVaoBmisMp-4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-17" edge="1" parent="1" source="sHWd2lZOUrEVaoBmisMp-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="sHWd2lZOUrEVaoBmisMp-8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-18" edge="1" parent="1" source="sHWd2lZOUrEVaoBmisMp-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="sHWd2lZOUrEVaoBmisMp-9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Client Listeners&lt;div&gt;Discord | Slack | Jira | HTTP | SMS&lt;br&gt;&lt;div&gt;+&lt;/div&gt;&lt;div&gt;Relay&lt;/div&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="110" width="257.5" x="357" y="281" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="User Application&lt;div&gt;+ Relay Listener&lt;/div&gt;" vertex="1">
+          <mxGeometry height="70" width="133.88" x="304" y="541" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-5" parent="1" style="html=1;verticalLabelPosition=bottom;align=center;labelBackgroundColor=#ffffff;verticalAlign=top;strokeWidth=2;strokeColor=#0080F0;shadow=0;dashed=0;shape=mxgraph.ios7.icons.envelope_(message);" value="" vertex="1">
+          <mxGeometry height="50" width="60" x="460.25" y="141" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-6" parent="1" style="html=1;verticalLabelPosition=bottom;align=center;labelBackgroundColor=#ffffff;verticalAlign=top;strokeWidth=2;strokeColor=#0080F0;shadow=0;dashed=0;shape=mxgraph.ios7.icons.mail;" value="" vertex="1">
+          <mxGeometry height="36" width="70" x="450.75" y="471" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-8" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="User Application&lt;div&gt;+ Relay Listener&lt;/div&gt;" vertex="1">
+          <mxGeometry height="70" width="133.88" x="557.19" y="541" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-9" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="User Application&lt;div&gt;+ Relay Listener&lt;/div&gt;" vertex="1">
+          <mxGeometry height="70" width="133.88" x="418.81" y="621" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-14" parent="1" style="shape=doubleArrow;whiteSpace=wrap;html=1;rotation=90;" value="" vertex="1">
+          <mxGeometry height="50" width="73.75" x="453.37" y="211" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-19" edge="1" parent="1" source="sHWd2lZOUrEVaoBmisMp-22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="sHWd2lZOUrEVaoBmisMp-23">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-20" edge="1" parent="1" source="sHWd2lZOUrEVaoBmisMp-22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="sHWd2lZOUrEVaoBmisMp-26">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-21" edge="1" parent="1" source="sHWd2lZOUrEVaoBmisMp-22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="sHWd2lZOUrEVaoBmisMp-27">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-22" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="&lt;div&gt;&lt;div&gt;Relay&lt;/div&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="46" width="257.5" x="812" y="349" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-23" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="User Application&lt;div&gt;+ Relay Listener&lt;/div&gt;" vertex="1">
+          <mxGeometry height="70" width="133.88" x="759" y="543" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-36" edge="1" parent="1" source="sHWd2lZOUrEVaoBmisMp-24" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.25;entryY=0;entryDx=0;entryDy=0;" target="sHWd2lZOUrEVaoBmisMp-22">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-24" parent="1" style="html=1;verticalLabelPosition=bottom;align=center;labelBackgroundColor=#ffffff;verticalAlign=top;strokeWidth=2;strokeColor=#0080F0;shadow=0;dashed=0;shape=mxgraph.ios7.icons.envelope_(message);" value="" vertex="1">
+          <mxGeometry height="50" width="60" x="818" y="211" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-25" parent="1" style="html=1;verticalLabelPosition=bottom;align=center;labelBackgroundColor=#ffffff;verticalAlign=top;strokeWidth=2;strokeColor=#0080F0;shadow=0;dashed=0;shape=mxgraph.ios7.icons.mail;" value="" vertex="1">
+          <mxGeometry height="36" width="70" x="905.75" y="473" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-26" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="User Application&lt;div&gt;+ Relay Listener&lt;/div&gt;" vertex="1">
+          <mxGeometry height="70" width="133.88" x="1012.19" y="543" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-27" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="User Application&lt;div&gt;+ Relay Listener&lt;/div&gt;" vertex="1">
+          <mxGeometry height="70" width="133.88" x="873.81" y="624" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-38" edge="1" parent="1" source="sHWd2lZOUrEVaoBmisMp-29" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="sHWd2lZOUrEVaoBmisMp-22">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-29" parent="1" style="html=1;verticalLabelPosition=bottom;align=center;labelBackgroundColor=#ffffff;verticalAlign=top;strokeWidth=2;strokeColor=#0080F0;shadow=0;dashed=0;shape=mxgraph.ios7.icons.envelope_(message);" value="" vertex="1">
+          <mxGeometry height="50" width="60" x="911.5" y="211" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-30" parent="1" style="shape=image;html=1;verticalAlign=top;verticalLabelPosition=bottom;labelBackgroundColor=#ffffff;imageAspect=0;aspect=fixed;image=https://icons.diagrams.net/icon-cache1/Social_Media-2937/1_Slack_colored_svg-1005.svg" value="" vertex="1">
+          <mxGeometry height="52" width="52" x="822" y="151" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-31" parent="1" style="image;html=1;image=img/lib/atlassian/Jira_Logo.svg;" value="" vertex="1">
+          <mxGeometry height="52" width="51" x="916" y="141" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-40" edge="1" parent="1" source="sHWd2lZOUrEVaoBmisMp-33" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.75;entryY=0;entryDx=0;entryDy=0;" target="sHWd2lZOUrEVaoBmisMp-22">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-33" parent="1" style="html=1;verticalLabelPosition=bottom;align=center;labelBackgroundColor=#ffffff;verticalAlign=top;strokeWidth=2;strokeColor=#0080F0;shadow=0;dashed=0;shape=mxgraph.ios7.icons.envelope_(message);" value="" vertex="1">
+          <mxGeometry height="50" width="60" x="1010.4" y="211" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-35" parent="1" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/general/Dev_Console.svg;" value="" vertex="1">
+          <mxGeometry height="52" width="65" x="1010" y="141" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-41" parent="1" style="html=1;verticalLabelPosition=bottom;align=center;labelBackgroundColor=#ffffff;verticalAlign=top;strokeWidth=2;strokeColor=#0080F0;shadow=0;dashed=0;shape=mxgraph.ios7.icons.envelope_(message);" value="" vertex="1">
+          <mxGeometry height="50" width="60" x="115.00999999999999" y="141" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-42" parent="1" style="shape=doubleArrow;whiteSpace=wrap;html=1;rotation=90;" value="" vertex="1">
+          <mxGeometry height="50" width="73.75" x="108.13" y="211" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-43" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;fontSize=28;" value="App-Integrated" vertex="1">
+          <mxGeometry height="30" width="200" x="50" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-44" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;fontSize=28;" value="Distributed Worker" vertex="1">
+          <mxGeometry height="30" width="250" x="364.5" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-45" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;fontSize=28;" value="Distributed Listeners and Workers" vertex="1">
+          <mxGeometry height="30" width="288" x="812" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="sHWd2lZOUrEVaoBmisMp-46" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;fontSize=28;" value="Omni&lt;div&gt;Message Provider Distributed Architecture&lt;/div&gt;" vertex="1">
+          <mxGeometry height="92" width="270" x="20" y="608" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
