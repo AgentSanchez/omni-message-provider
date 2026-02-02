@@ -1,4 +1,4 @@
-from typing import Optional, Callable, Dict, Any, Union, List
+from typing import Any, Optional, Callable, Union, List
 import logging
 import asyncio
 from message_provider.message_provider import MessageProvider
@@ -83,9 +83,6 @@ class DiscordMessageProvider(MessageProvider):
         # Message listeners
         self.message_listeners = []
 
-        # Cache for message objects (needed for reactions/updates)
-        self.message_cache: Dict[str, discord.Message] = {}
-
         # Setup event handlers
         self._setup_handlers()
 
@@ -152,9 +149,6 @@ class DiscordMessageProvider(MessageProvider):
                 }
             }
 
-            # Cache the message object for later use
-            self.message_cache[message_id] = message
-
             log.info(f"[DiscordMessageProvider] Received message from {user_id} in {channel_id}: {text}")
 
             # Notify all registered listeners
@@ -212,20 +206,16 @@ class DiscordMessageProvider(MessageProvider):
                     "error": f"Channel {target_channel_id} not found"
                 }
 
-            # Check if we should reply to a previous message
+            # Send message, with reply reference if replying to a previous message
             reference = None
-            if previous_message_id and previous_message_id in self.message_cache:
-                reference = self.message_cache[previous_message_id]
+            if previous_message_id:
+                reference = discord.MessageReference(
+                    message_id=int(previous_message_id),
+                    channel_id=int(target_channel_id)
+                )
 
-            # Send message
-            if reference:
-                sent_message = await reference.reply(message)
-            else:
-                sent_message = await discord_channel.send(message)
-
-            # Cache the sent message
+            sent_message = await discord_channel.send(message, reference=reference)
             message_id = str(sent_message.id)
-            self.message_cache[message_id] = sent_message
 
             log.info(f"[DiscordMessageProvider] Sent message to {target_channel_id}: {message[:50]}...")
 
@@ -295,17 +285,23 @@ class DiscordMessageProvider(MessageProvider):
                 "error": str(e)
             }
 
-    async def _send_reaction_async(self, message_id: str, reaction: str) -> dict:
+    async def _send_reaction_async(self, message_id: str, reaction: str, channel: Optional[str] = None) -> dict:
         """Internal async method to add reactions."""
         try:
-            # Get message from cache
-            if message_id not in self.message_cache:
+            if not channel:
                 return {
                     "success": False,
-                    "error": "Message not found in cache"
+                    "error": "channel is required"
                 }
 
-            message = self.message_cache[message_id]
+            discord_channel = await self._get_channel(channel)
+            if discord_channel is None:
+                return {
+                    "success": False,
+                    "error": f"Channel {channel} not found"
+                }
+
+            message = await discord_channel.fetch_message(int(message_id))
 
             # Add reaction
             await message.add_reaction(reaction)
@@ -331,13 +327,14 @@ class DiscordMessageProvider(MessageProvider):
                 "error": str(e)
             }
 
-    def send_reaction(self, message_id: str, reaction: str) -> dict:
+    def send_reaction(self, message_id: str, reaction: str, channel: Optional[str] = None) -> dict:
         """
         Add a reaction to a Discord message.
 
         Args:
             message_id: Discord message ID
             reaction: Emoji to react with (e.g., "👍", "❤️", or custom emoji like "<:name:id>")
+            channel: Channel ID where the message exists
 
         Returns:
             Dict with success status
@@ -350,14 +347,14 @@ class DiscordMessageProvider(MessageProvider):
                 except RuntimeError:
                     running_loop = None
                 if running_loop is loop:
-                    loop.create_task(self._send_reaction_async(message_id, reaction))
+                    loop.create_task(self._send_reaction_async(message_id, reaction, channel))
                     return {"success": True, "status": "scheduled"}
                 future = asyncio.run_coroutine_threadsafe(
-                    self._send_reaction_async(message_id, reaction),
+                    self._send_reaction_async(message_id, reaction, channel),
                     loop
                 )
                 return future.result(timeout=30)
-            return asyncio.run(self._send_reaction_async(message_id, reaction))
+            return asyncio.run(self._send_reaction_async(message_id, reaction, channel))
         except Exception as e:
             log.error(f"[DiscordMessageProvider] Error in send_reaction: {str(e)}")
             return {
@@ -365,17 +362,23 @@ class DiscordMessageProvider(MessageProvider):
                 "error": str(e)
             }
 
-    async def _update_message_async(self, message_id: str, new_text: str) -> dict:
+    async def _update_message_async(self, message_id: str, new_text: str, channel: Optional[str] = None) -> dict:
         """Internal async method to update messages."""
         try:
-            # Get message from cache
-            if message_id not in self.message_cache:
+            if not channel:
                 return {
                     "success": False,
-                    "error": "Message not found in cache"
+                    "error": "channel is required"
                 }
 
-            message = self.message_cache[message_id]
+            discord_channel = await self._get_channel(channel)
+            if discord_channel is None:
+                return {
+                    "success": False,
+                    "error": f"Channel {channel} not found"
+                }
+
+            message = await discord_channel.fetch_message(int(message_id))
 
             # Update message
             await message.edit(content=new_text)
@@ -400,13 +403,14 @@ class DiscordMessageProvider(MessageProvider):
                 "error": str(e)
             }
 
-    def update_message(self, message_id: str, new_text: str) -> dict:
+    def update_message(self, message_id: str, new_text: str, channel: Optional[str] = None) -> dict:
         """
         Update an existing Discord message.
 
         Args:
             message_id: Discord message ID
             new_text: New message text
+            channel: Channel ID where the message exists
 
         Returns:
             Dict with success status
@@ -419,14 +423,14 @@ class DiscordMessageProvider(MessageProvider):
                 except RuntimeError:
                     running_loop = None
                 if running_loop is loop:
-                    loop.create_task(self._update_message_async(message_id, new_text))
+                    loop.create_task(self._update_message_async(message_id, new_text, channel))
                     return {"success": True, "status": "scheduled"}
                 future = asyncio.run_coroutine_threadsafe(
-                    self._update_message_async(message_id, new_text),
+                    self._update_message_async(message_id, new_text, channel),
                     loop
                 )
                 return future.result(timeout=30)
-            return asyncio.run(self._update_message_async(message_id, new_text))
+            return asyncio.run(self._update_message_async(message_id, new_text, channel))
         except Exception as e:
             log.error(f"[DiscordMessageProvider] Error in update_message: {str(e)}")
             return {

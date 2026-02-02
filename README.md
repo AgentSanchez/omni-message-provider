@@ -60,12 +60,19 @@ provider = DiscordMessageProvider(
 def message_handler(message):
     print(f"Received: {message['text']}")
 
-    # Reply
+    channel = message['channel']
+    message_id = message['message_id']
+
+    # Reply (threads the response)
     provider.send_message(
         message="Hello!",
         user_id=message['user_id'],
-        channel=message['channel']
+        channel=channel,
+        previous_message_id=message_id
     )
+
+    # React to the original message
+    provider.send_reaction(message_id, "👋", channel=channel)
 
 provider.register_message_listener(message_handler)
 provider.start()
@@ -86,11 +93,19 @@ provider = SlackMessageProvider(
 )
 
 def message_handler(message):
+    channel = message['channel']
+    message_id = message['message_id']
+
+    # Reply in thread (previous_message_id is used as thread_ts)
     provider.send_message(
         message="Got it!",
         user_id=message['user_id'],
-        channel=message['channel']
+        channel=channel,
+        previous_message_id=message_id
     )
+
+    # React to the original message
+    provider.send_reaction(message_id, "eyes", channel=channel)
 
 provider.register_message_listener(message_handler)
 provider.start()
@@ -167,14 +182,14 @@ All providers implement the same interface:
 
 ```python
 class MessageProvider:
-    def send_message(message: str, user_id: str, channel: str = None) -> dict:
-        """Send a message"""
+    def send_message(message: str, user_id: str, channel: str = None, previous_message_id: str = None) -> dict:
+        """Send a message. Use previous_message_id to reply in a thread."""
 
-    def send_reaction(message_id: str, reaction: str) -> dict:
-        """Add a reaction/label"""
+    def send_reaction(message_id: str, reaction: str, channel: str = None) -> dict:
+        """Add a reaction/label. channel is required for Discord and Slack."""
 
-    def update_message(message_id: str, new_text: str) -> dict:
-        """Update a message/status"""
+    def update_message(message_id: str, new_text: str, channel: str = None) -> dict:
+        """Update a message/status. channel is required for Discord and Slack."""
 
     def register_message_listener(callback: Callable) -> None:
         """Register callback for incoming messages"""
@@ -183,18 +198,20 @@ class MessageProvider:
         """Start the provider (blocking)"""
 ```
 
+Providers are stateless -- they do not cache message or channel metadata internally. The application is responsible for tracking conversation state (e.g., which channel and thread a message belongs to) using the data provided in incoming messages.
+
 ## Platform-Specific Mappings
 
 ### Discord
-- `send_message()` → Send Discord message
-- `send_reaction()` → Add emoji reaction
-- `update_message()` → Edit message
+- `send_message()` → Send Discord message (uses `previous_message_id` as reply reference)
+- `send_reaction(channel=...)` → Add emoji reaction (channel required)
+- `update_message(channel=...)` → Edit message (channel required)
 - `channel` = Discord channel ID
 
 ### Slack
-- `send_message()` → Post Slack message
-- `send_reaction()` → Add reaction emoji
-- `update_message()` → Update message
+- `send_message()` → Post Slack message (uses `previous_message_id` as `thread_ts`)
+- `send_reaction(channel=...)` → Add reaction emoji (channel required)
+- `update_message(channel=...)` → Update message (channel required)
 - `channel` = Slack channel ID
 
 ### Jira

@@ -137,19 +137,13 @@ class TestSlackMessageProvider:
             app_token="xapp-test"
         )
 
-        # Store metadata first
-        provider.message_metadata['1234567890.123456'] = {
-            'ts': '1234567890.123456',
-            'channel': 'C123456',
-            'thread_ts': None
-        }
-
         # Mock the Slack client
         provider.app.client.reactions_add = Mock(return_value={'ok': True})
 
         result = provider.send_reaction(
             message_id='1234567890.123456',
-            reaction='thumbsup'
+            reaction='thumbsup',
+            channel='C123456'
         )
 
         assert result['success'] is True

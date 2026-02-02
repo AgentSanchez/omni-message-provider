@@ -77,14 +77,14 @@ def create_message_handler(provider):
             sent_message_id = result['message_id']
 
             # Add a reaction to the original message
-            reaction_result = provider.send_reaction(message_id, "thumbsup")
+            reaction_result = provider.send_reaction(message_id, "thumbsup", channel=channel)
             if not reaction_result.get("success"):
                 log.warning(f"Reaction failed: {reaction_result.get('error')}")
 
             # Optionally update our reply after 2 seconds
             import time
             time.sleep(2)
-            provider.update_message(sent_message_id, f"You said: {text} (edited)")
+            provider.update_message(sent_message_id, f"You said: {text} (edited)", channel=channel)
 
     return message_handler
 

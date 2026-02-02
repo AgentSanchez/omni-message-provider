@@ -127,9 +127,6 @@ class SlackMessageProvider(MessageProvider):
         # Message listeners
         self.message_listeners = []
 
-        # Track message metadata for threading
-        self.message_metadata: Dict[str, Dict[str, Any]] = {}
-
         # Setup event handlers
         self._setup_handlers()
 
@@ -198,14 +195,6 @@ class SlackMessageProvider(MessageProvider):
             log.info(f"[SlackMessageProvider] Received app mention from {user_id} in {channel}: {text}")
             _mark_recent_message(ts)
 
-            # Store metadata for reactions/updates
-            if ts:
-                self.message_metadata[ts] = {
-                    "ts": ts,
-                    "channel": channel,
-                    "thread_ts": thread_ts or ts
-                }
-
             self._notify_listeners(message_data)
 
         @self.app.event("message")
@@ -250,14 +239,6 @@ class SlackMessageProvider(MessageProvider):
 
             log.info(f"[SlackMessageProvider] Received message from {user_id} in {channel}: {text}")
             _mark_recent_message(ts)
-
-            # Store metadata for reactions/updates
-            if ts:
-                self.message_metadata[ts] = {
-                    "ts": ts,
-                    "channel": channel,
-                    "thread_ts": thread_ts or ts
-                }
 
             # Notify all registered listeners
             self._notify_listeners(message_data)
@@ -360,12 +341,8 @@ class SlackMessageProvider(MessageProvider):
             # Determine target channel
             target_channel = channel or user_id
 
-            # Check if we should thread the message
-            thread_ts = None
-            if previous_message_id and previous_message_id in self.message_metadata:
-                # Reply in the same thread
-                metadata = self.message_metadata[previous_message_id]
-                thread_ts = metadata.get("thread_ts") or metadata.get("ts")
+            # Use previous_message_id directly as thread_ts for threading
+            thread_ts = previous_message_id if previous_message_id else None
 
             # Send message
             result = self.app.client.chat_postMessage(
@@ -375,13 +352,6 @@ class SlackMessageProvider(MessageProvider):
             )
 
             message_id = result["ts"]
-
-            # Store metadata for future threading
-            self.message_metadata[message_id] = {
-                "ts": message_id,
-                "channel": result["channel"],
-                "thread_ts": thread_ts or message_id
-            }
 
             log.info(f"[SlackMessageProvider] Sent message to {target_channel}: {message[:50]}...")
 
@@ -405,26 +375,24 @@ class SlackMessageProvider(MessageProvider):
                 "error": str(e)
             }
 
-    def send_reaction(self, message_id: str, reaction: str) -> dict:
+    def send_reaction(self, message_id: str, reaction: str, channel: Optional[str] = None) -> dict:
         """
         Add a reaction to a Slack message.
 
         Args:
             message_id: Slack message timestamp (ts)
             reaction: Reaction name without colons (e.g., "thumbsup", "heart")
+            channel: Optional channel ID. Falls back to cached metadata if not provided.
 
         Returns:
             Dict with success status
         """
         try:
-            # Get channel from metadata
-            if message_id not in self.message_metadata:
+            if not channel:
                 return {
                     "success": False,
-                    "error": "Message metadata not found"
+                    "error": "channel is required"
                 }
-
-            channel = self.message_metadata[message_id]["channel"]
 
             # Remove colons if present in reaction
             clean_reaction = reaction.strip(":")
@@ -457,26 +425,24 @@ class SlackMessageProvider(MessageProvider):
                 "error": str(e)
             }
 
-    def update_message(self, message_id: str, new_text: str) -> dict:
+    def update_message(self, message_id: str, new_text: str, channel: Optional[str] = None) -> dict:
         """
         Update an existing Slack message.
 
         Args:
             message_id: Slack message timestamp (ts)
             new_text: New message text
+            channel: Channel ID where the message exists
 
         Returns:
             Dict with success status
         """
         try:
-            # Get channel from metadata
-            if message_id not in self.message_metadata:
+            if not channel:
                 return {
                     "success": False,
-                    "error": "Message metadata not found"
+                    "error": "channel is required"
                 }
-
-            channel = self.message_metadata[message_id]["channel"]
 
             # Update message
             result = self.app.client.chat_update(

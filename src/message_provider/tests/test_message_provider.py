@@ -23,17 +23,19 @@ class MockMessageProvider(MessageProvider):
         })
         return {'success': True, 'message_id': 'test_123'}
 
-    def send_reaction(self, message_id, reaction):
+    def send_reaction(self, message_id, reaction, channel=None):
         self.sent_reactions.append({
             'message_id': message_id,
-            'reaction': reaction
+            'reaction': reaction,
+            'channel': channel
         })
         return {'success': True}
 
-    def update_message(self, message_id, new_text):
+    def update_message(self, message_id, new_text, channel=None):
         self.updated_messages.append({
             'message_id': message_id,
-            'new_text': new_text
+            'new_text': new_text,
+            'channel': channel
         })
         return {'success': True}
 

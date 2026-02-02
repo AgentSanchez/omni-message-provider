@@ -80,7 +80,7 @@ def create_message_handler(provider):
                 sent_message_id = result['message_id']
 
                 # Add a reaction to the original message
-                provider.send_reaction(message_id, "👋")
+                provider.send_reaction(message_id, "👋", channel=channel)
 
         # Example: Respond to messages containing "hello"
         elif 'hello' in text.lower():
@@ -93,7 +93,7 @@ def create_message_handler(provider):
 
             if result.get('success'):
                 # Add a wave reaction
-                provider.send_reaction(message_id, "👋")
+                provider.send_reaction(message_id, "👋", channel=channel)
 
         # Example: Respond to "update test"
         elif 'update test' in text.lower():
@@ -109,7 +109,7 @@ def create_message_handler(provider):
                 # Update the message after a short delay
                 import time
                 time.sleep(2)
-                provider.update_message(sent_message_id, "Message updated! ✅")
+                provider.update_message(sent_message_id, "Message updated! ✅", channel=channel)
 
     return message_handler
 

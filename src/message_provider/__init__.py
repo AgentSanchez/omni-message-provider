@@ -1,5 +1,7 @@
 """Omni Message Provider - Unified messaging interface for Discord, Slack, Jira, and more."""
 
+from typing import TYPE_CHECKING, Literal, Type, overload
+
 __version__ = "0.2.0"
 
 # Import base classes and components without optional dependencies
@@ -19,6 +21,24 @@ __all__ = [
     "RelayMessageProvider",
     "RelayClient",
 ]
+
+if TYPE_CHECKING:
+    # Help static type checkers resolve lazy-imported providers.
+    from message_provider.discord_message_provider import DiscordMessageProvider as DiscordMessageProvider
+    from message_provider.jira_message_provider import JiraMessageProvider as JiraMessageProvider
+    from message_provider.slack_message_provider import SlackMessageProvider as SlackMessageProvider
+
+
+@overload
+def __getattr__(name: Literal["SlackMessageProvider"]) -> Type["SlackMessageProvider"]: ...
+
+
+@overload
+def __getattr__(name: Literal["DiscordMessageProvider"]) -> Type["DiscordMessageProvider"]: ...
+
+
+@overload
+def __getattr__(name: Literal["JiraMessageProvider"]) -> Type["JiraMessageProvider"]: ...
 
 
 def __getattr__(name):

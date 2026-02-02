@@ -1,7 +1,7 @@
 import logging
 import threading
 import time
-from typing import Optional, Callable, List, Set
+from typing import Optional, Callable, List
 from datetime import datetime, timedelta, timezone
 from message_provider.message_provider import MessageProvider
 
@@ -111,10 +111,6 @@ class JiraMessageProvider(MessageProvider):
         # Message listeners
         self.message_listeners: List[Callable] = []
 
-        # Track seen issues and comments to avoid duplicates
-        self.seen_issues: Set[str] = set()
-        self.seen_comments: Set[str] = set()  # Format: "ISSUE-123#comment-456"
-
         # Last poll time
         self.last_poll_time: Optional[datetime] = None
 
@@ -221,18 +217,19 @@ class JiraMessageProvider(MessageProvider):
 
             new_issues_count = 0
             for issue in issues:
-                # Skip if already seen
-                if issue.key in self.seen_issues:
-                    continue
                 issue_created = self._parse_jira_datetime(issue.fields.created)
-                if issue_created:
-                    issue_created_utc = issue_created.astimezone(timezone.utc).replace(tzinfo=None)
-                    if self.ignore_existing_on_startup and issue_created_utc <= self.startup_time:
-                        self.seen_issues.add(issue.key)
-                        continue
+                if not issue_created:
+                    continue
+                issue_created_utc = issue_created.astimezone(timezone.utc).replace(tzinfo=None)
 
-                # Mark as seen
-                self.seen_issues.add(issue.key)
+                # Skip issues from before startup
+                if self.ignore_existing_on_startup and issue_created_utc <= self.startup_time:
+                    continue
+
+                # Skip issues already covered by previous poll
+                if previous_poll_time and issue_created_utc <= previous_poll_time:
+                    continue
+
                 new_issues_count += 1
 
                 # Convert to message format
@@ -327,22 +324,19 @@ class JiraMessageProvider(MessageProvider):
                 comments = self.jira.comments(issue.key)
 
                 for comment in comments:
-                    comment_key = f"{issue.key}#comment-{comment.id}"
-
-                    # Skip if already seen
-                    if comment_key in self.seen_comments:
-                        continue
-
                     # Check if comment is recent enough
                     comment_created = self._parse_jira_datetime(comment.created)
                     if comment_created is None:
-                        log.warning(f"[JiraMessageProvider] Unable to parse comment time for {comment_key}")
+                        log.warning(f"[JiraMessageProvider] Unable to parse comment time for {issue.key}#comment-{comment.id}")
                         continue
                     comment_created_utc = comment_created.astimezone(timezone.utc).replace(tzinfo=None)
+
+                    # Skip comments from before startup
                     if self.ignore_existing_on_startup and comment_created_utc <= self.startup_time:
-                        self.seen_comments.add(comment_key)
                         continue
-                    if previous_poll_time and comment_created_utc < previous_poll_time:
+
+                    # Skip comments already covered by previous poll
+                    if previous_poll_time and comment_created_utc <= previous_poll_time:
                         continue
 
                     # Check if matches criteria
@@ -371,9 +365,8 @@ class JiraMessageProvider(MessageProvider):
                     if not matches:
                         continue
 
-                    # Mark as seen
-                    self.seen_comments.add(comment_key)
                     new_comments_count += 1
+                    comment_key = f"{issue.key}#comment-{comment.id}"
 
                     # Convert to message format
                     message_data = {

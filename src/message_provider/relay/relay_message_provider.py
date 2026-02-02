@@ -130,13 +130,14 @@ class RelayMessageProvider(MessageProvider):
             log.error("[RelayMessageProvider] Event loop not running")
             return {"status": "error", "error": "Event loop not running"}
 
-    def send_reaction(self, message_id: str, reaction: str) -> dict:
+    def send_reaction(self, message_id: str, reaction: str, channel: Optional[str] = None) -> dict:
         """
         Add a reaction through the relay to the MP service.
 
         Args:
             message_id: Message ID
             reaction: Reaction emoji/text
+            channel: Channel ID
 
         Returns:
             Dict with status (actual send happens async)
@@ -145,7 +146,8 @@ class RelayMessageProvider(MessageProvider):
             'type': 'send_reaction',
             'data': {
                 'message_id': message_id,
-                'reaction': reaction
+                'reaction': reaction,
+                'channel': channel
             },
             'timestamp': datetime.utcnow().isoformat()
         }
@@ -160,13 +162,14 @@ class RelayMessageProvider(MessageProvider):
             log.error("[RelayMessageProvider] Event loop not running")
             return {"status": "error", "error": "Event loop not running"}
 
-    def update_message(self, message_id: str, new_text: str) -> dict:
+    def update_message(self, message_id: str, new_text: str, channel: Optional[str] = None) -> dict:
         """
         Update a message through the relay to the MP service.
 
         Args:
             message_id: Message ID
             new_text: New message text
+            channel: Channel ID
 
         Returns:
             Dict with status (actual send happens async)
@@ -175,7 +178,8 @@ class RelayMessageProvider(MessageProvider):
             'type': 'update_message',
             'data': {
                 'message_id': message_id,
-                'new_text': new_text
+                'new_text': new_text,
+                'channel': channel
             },
             'timestamp': datetime.utcnow().isoformat()
         }

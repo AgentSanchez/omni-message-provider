@@ -135,7 +135,7 @@ def run_orchestrator(orchestrator_name: str):
 
         # Add reaction
         log.info(f"[{orchestrator_name}] Adding reaction...")
-        provider.send_reaction(message_id, "👍")
+        provider.send_reaction(message_id, "👍", channel=channel)
 
     # Register handler
     provider.register_message_listener(message_handler)

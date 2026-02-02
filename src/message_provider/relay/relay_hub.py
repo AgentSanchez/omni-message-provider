@@ -149,14 +149,16 @@ class RelayHub:
                 # Orchestrator wants to add a reaction
                 self.local_provider.send_reaction(
                     message_id=data.get('message_id'),
-                    reaction=data.get('reaction')
+                    reaction=data.get('reaction'),
+                    channel=data.get('channel')
                 )
 
             elif msg_type == 'update_message':
                 # Orchestrator wants to update a message
                 self.local_provider.update_message(
                     message_id=data.get('message_id'),
-                    new_text=data.get('new_text')
+                    new_text=data.get('new_text'),
+                    channel=data.get('channel')
                 )
 
             else:

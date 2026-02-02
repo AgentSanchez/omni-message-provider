@@ -109,7 +109,7 @@ class TestDiscordMessageProvider:
 
         assert result['success'] is True
         assert result['message_id'] == '123456789'
-        mock_channel.send.assert_called_once_with("Test message")
+        mock_channel.send.assert_called_once_with("Test message", reference=None)
 
     @pytest.mark.asyncio
     async def test_on_message_sets_is_mention(self, mock_discord_intents):

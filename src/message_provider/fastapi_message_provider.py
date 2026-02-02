@@ -325,11 +325,12 @@ class FastAPIMessageProvider(MessageProvider):
     def get_app(self) -> FastAPI:
         return self.app
 
-    def send_reaction(self, message_id: str, reaction: str) -> dict:
+    def send_reaction(self, message_id: str, reaction: str, channel: Optional[str] = None) -> dict:
         payload = {
             "type": "reaction",
             "message_id": message_id,
             "reaction": reaction,
+            "channel": channel,
             "timestamp": datetime.utcnow().isoformat()
         }
 
@@ -360,11 +361,12 @@ class FastAPIMessageProvider(MessageProvider):
         success = all(result.get("status") != "failed" for result in results)
         return {"success": success, "results": results}
 
-    def update_message(self, message_id: str, new_text: str) -> dict:
+    def update_message(self, message_id: str, new_text: str, channel: Optional[str] = None) -> dict:
         payload = {
             "type": "update",
             "message_id": message_id,
             "text": new_text,
+            "channel": channel,
             "timestamp": datetime.utcnow().isoformat()
         }
 
