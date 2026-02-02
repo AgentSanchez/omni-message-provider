@@ -17,6 +17,13 @@ except ImportError:
     _SLACK_AVAILABLE = False
 
 
+_PERMISSION_ERRORS = frozenset({
+    "missing_scope", "not_authed", "invalid_auth", "token_revoked",
+    "account_inactive", "no_permission", "org_login_required",
+    "ekm_access_denied",
+})
+
+
 class SlackMessageProvider(MessageProvider):
     """
     Slack implementation of MessageProvider using Slack Bolt framework.
@@ -37,6 +44,10 @@ class SlackMessageProvider(MessageProvider):
                           Names like "#general" are supported if the token has conversations:read.
         trigger_mode: Controls which events trigger callbacks. Options:
                       "mention" (only app mentions), "chat" (only messages), "both" (default).
+                      In "mention" mode, thread replies are still forwarded if the bot has
+                      previously sent a message in that thread.
+        active_thread_ttl: Seconds to track threads the bot has participated in.
+                           Used by "mention" mode for thread reply forwarding. Default: 86400 (24h).
 
     Usage:
         # Socket Mode (recommended for development)
@@ -69,7 +80,8 @@ class SlackMessageProvider(MessageProvider):
         use_socket_mode: bool = True,
         token_verification_enabled: bool = False,
         allowed_channels: Optional[List[str]] = None,
-        trigger_mode: str = "both"
+        trigger_mode: str = "both",
+        active_thread_ttl: float = 86400.0,
     ):
         super().__init__()
 
@@ -106,6 +118,8 @@ class SlackMessageProvider(MessageProvider):
         self._channel_name_cache: Dict[str, str] = {}
         self._recent_message_ids: Dict[str, float] = {}
         self._recent_message_ttl_sec = 5.0
+        self._active_threads: Dict[str, float] = {}
+        self._active_thread_ttl_sec = active_thread_ttl
 
         # Initialize Slack Bolt app
         self.app = App(
@@ -199,7 +213,9 @@ class SlackMessageProvider(MessageProvider):
         def handle_message_events(event, say):
             """Handle incoming Slack messages."""
             if self.trigger_mode == "mention":
-                return
+                thread_ts = event.get("thread_ts")
+                if not thread_ts or not self._is_active_thread(thread_ts):
+                    return
             # Ignore bot messages and message changes
             if event.get("subtype") in ["bot_message", "message_changed", "message_deleted"]:
                 return
@@ -243,6 +259,24 @@ class SlackMessageProvider(MessageProvider):
             # Notify all registered listeners
             self._notify_listeners(message_data)
 
+    def _handle_slack_api_error(self, e, operation: str) -> dict:
+        """Log a SlackApiError with context. Permission errors are logged at warning level."""
+        error_code = e.response.get("error", "unknown_error")
+        msg = f"[SlackMessageProvider] {operation}: {error_code}"
+
+        if error_code in _PERMISSION_ERRORS:
+            needed = e.response.get("needed")
+            provided = e.response.get("provided")
+            if needed:
+                msg += f" (scope needed: {needed})"
+            if provided:
+                msg += f" (scopes provided: {provided})"
+            log.warning(msg)
+        else:
+            log.error(msg)
+
+        return {"success": False, "error": error_code}
+
     def _get_user_email(self, user_id: str) -> str:
         """Fetch user email from Slack profile."""
         try:
@@ -250,8 +284,11 @@ class SlackMessageProvider(MessageProvider):
             user = response.data.get("user", {}) if hasattr(response, 'data') else response.get("user", {})
             profile = user.get("profile", {})
             return profile.get("email", "unknown@example.com")
+        except SlackApiError as e:
+            self._handle_slack_api_error(e, f"Failed to fetch email for user {user_id}")
+            return "unknown@example.com"
         except Exception as e:
-            log.debug(f"[SlackMessageProvider] Failed to fetch email for {user_id}: {e}")
+            log.error(f"[SlackMessageProvider] Failed to fetch email for {user_id}: {e}")
             return "unknown@example.com"
 
     def _resolve_allowed_channels(self, allowed_channels: Set[str]) -> Tuple[Set[str], Set[str]]:
@@ -300,8 +337,10 @@ class SlackMessageProvider(MessageProvider):
                     "[SlackMessageProvider] Could not resolve channels: %s",
                     ", ".join(sorted(unresolved))
                 )
+        except SlackApiError as e:
+            self._handle_slack_api_error(e, "Failed to resolve channel names")
         except Exception as e:
-            log.warning(f"[SlackMessageProvider] Failed to resolve channel names: {e}")
+            log.error(f"[SlackMessageProvider] Failed to resolve channel names: {e}")
 
         return ids, names.difference(resolved_names)
 
@@ -318,9 +357,20 @@ class SlackMessageProvider(MessageProvider):
             if name:
                 self._channel_name_cache[channel_id] = name
                 return name in self.allowed_channel_names
+        except SlackApiError as e:
+            self._handle_slack_api_error(e, f"Failed to resolve channel id {channel_id}")
         except Exception as e:
-            log.debug(f"[SlackMessageProvider] Failed to resolve channel id {channel_id}: {e}")
+            log.error(f"[SlackMessageProvider] Failed to resolve channel id {channel_id}: {e}")
         return False
+    def _is_active_thread(self, thread_ts: str) -> bool:
+        """Check if the bot has sent a message in this thread."""
+        now = time.monotonic()
+        cutoff = now - self._active_thread_ttl_sec
+        stale = [ts for ts, t in self._active_threads.items() if t < cutoff]
+        for ts in stale:
+            self._active_threads.pop(ts, None)
+        return thread_ts in self._active_threads
+
     def _notify_listeners(self, message_data: dict):
         """Notify all registered message listeners."""
         for listener in self.message_listeners:
@@ -364,6 +414,9 @@ class SlackMessageProvider(MessageProvider):
 
             message_id = result["ts"]
 
+            if thread_ts:
+                self._active_threads[thread_ts] = time.monotonic()
+
             log.info(f"[SlackMessageProvider] Sent message to {target_channel}: {message[:50]}...")
 
             return {
@@ -374,17 +427,10 @@ class SlackMessageProvider(MessageProvider):
             }
 
         except SlackApiError as e:
-            log.error(f"[SlackMessageProvider] Failed to send message: {e.response['error']}")
-            return {
-                "success": False,
-                "error": e.response['error']
-            }
+            return self._handle_slack_api_error(e, "Failed to send message")
         except Exception as e:
-            log.error(f"[SlackMessageProvider] Unexpected error sending message: {str(e)}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
+            log.error(f"[SlackMessageProvider] Failed to send message: {e}")
+            return {"success": False, "error": str(e)}
 
     def send_reaction(self, message_id: str, reaction: str, channel: Optional[str] = None) -> dict:
         """
@@ -424,17 +470,10 @@ class SlackMessageProvider(MessageProvider):
             }
 
         except SlackApiError as e:
-            log.error(f"[SlackMessageProvider] Failed to add reaction: {e.response['error']}")
-            return {
-                "success": False,
-                "error": e.response['error']
-            }
+            return self._handle_slack_api_error(e, "Failed to add reaction")
         except Exception as e:
-            log.error(f"[SlackMessageProvider] Unexpected error adding reaction: {str(e)}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
+            log.error(f"[SlackMessageProvider] Failed to add reaction: {e}")
+            return {"success": False, "error": str(e)}
 
     def update_message(self, message_id: str, new_text: str, channel: Optional[str] = None) -> dict:
         """
@@ -471,17 +510,10 @@ class SlackMessageProvider(MessageProvider):
             }
 
         except SlackApiError as e:
-            log.error(f"[SlackMessageProvider] Failed to update message: {e.response['error']}")
-            return {
-                "success": False,
-                "error": e.response['error']
-            }
+            return self._handle_slack_api_error(e, "Failed to update message")
         except Exception as e:
-            log.error(f"[SlackMessageProvider] Unexpected error updating message: {str(e)}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
+            log.error(f"[SlackMessageProvider] Failed to update message: {e}")
+            return {"success": False, "error": str(e)}
 
     def register_message_listener(self, callback: Callable):
         """
