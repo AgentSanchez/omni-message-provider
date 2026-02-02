@@ -1,0 +1,5 @@
+skips:
+  - B104
+exclude_dirs:
+  - src/message_provider/examples
+  - src/message_provider/tests
