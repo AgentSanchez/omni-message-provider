@@ -135,23 +135,19 @@ class SlackMessageProvider(MessageProvider):
     def _setup_handlers(self):
         """Setup Slack event handlers."""
 
-        def _mark_recent_message(message_id: Optional[str]) -> None:
+        def _try_claim_message(message_id: Optional[str]) -> bool:
+            """Atomically claim a message ID. Returns True if this is the first claim."""
             if not message_id:
-                return
+                return False
             now = time.monotonic()
-            self._recent_message_ids[message_id] = now
             # Prune old entries
             cutoff = now - self._recent_message_ttl_sec
             stale = [mid for mid, ts in self._recent_message_ids.items() if ts < cutoff]
             for mid in stale:
                 self._recent_message_ids.pop(mid, None)
-
-        def _recently_seen(message_id: Optional[str]) -> bool:
-            if not message_id:
-                return False
-            now = time.monotonic()
-            ts = self._recent_message_ids.get(message_id)
-            return ts is not None and (now - ts) <= self._recent_message_ttl_sec
+            # setdefault is atomic in CPython — first caller wins
+            existing = self._recent_message_ids.setdefault(message_id, now)
+            return existing == now
 
         @self.app.event("app_mention")
         def handle_app_mention_events(event, say):
@@ -175,8 +171,10 @@ class SlackMessageProvider(MessageProvider):
                     pass
                 else:
                     return
-            if _recently_seen(ts):
+            if not _try_claim_message(ts):
                 return
+
+            user_email = self._get_user_email(user_id)
 
             message_data = {
                 "message_id": ts,
@@ -189,11 +187,11 @@ class SlackMessageProvider(MessageProvider):
                     "ts": ts,
                     "channel_type": event.get("channel_type"),
                     "event_type": "app_mention",
+                    "user_email": user_email,
                 }
             }
 
-            log.info(f"[SlackMessageProvider] Received app mention from {user_id} in {channel}: {text}")
-            _mark_recent_message(ts)
+            log.info(f"[SlackMessageProvider] Received app mention from {user_id} ({user_email}) in {channel}: {text}")
 
             self._notify_listeners(message_data)
 
@@ -220,8 +218,10 @@ class SlackMessageProvider(MessageProvider):
                     pass
                 else:
                     return
-            if _recently_seen(ts):
+            if not _try_claim_message(ts):
                 return
+
+            user_email = self._get_user_email(user_id)
 
             # Build message data compatible with MessageProvider interface
             message_data = {
@@ -234,14 +234,25 @@ class SlackMessageProvider(MessageProvider):
                     "thread_ts": thread_ts,
                     "ts": ts,
                     "channel_type": event.get("channel_type"),
+                    "user_email": user_email,
                 }
             }
 
-            log.info(f"[SlackMessageProvider] Received message from {user_id} in {channel}: {text}")
-            _mark_recent_message(ts)
+            log.info(f"[SlackMessageProvider] Received message from {user_id} ({user_email}) in {channel}: {text}")
 
             # Notify all registered listeners
             self._notify_listeners(message_data)
+
+    def _get_user_email(self, user_id: str) -> str:
+        """Fetch user email from Slack profile."""
+        try:
+            response = self.app.client.users_info(user=user_id)
+            user = response.data.get("user", {}) if hasattr(response, 'data') else response.get("user", {})
+            profile = user.get("profile", {})
+            return profile.get("email", "unknown@example.com")
+        except Exception as e:
+            log.debug(f"[SlackMessageProvider] Failed to fetch email for {user_id}: {e}")
+            return "unknown@example.com"
 
     def _resolve_allowed_channels(self, allowed_channels: Set[str]) -> Tuple[Set[str], Set[str]]:
         """Resolve channel names to IDs; keep IDs as-is."""

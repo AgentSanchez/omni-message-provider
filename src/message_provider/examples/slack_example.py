@@ -57,7 +57,8 @@ def create_message_handler(provider):
                 - channel: Slack channel ID
                 - metadata: Additional Slack-specific data
         """
-        log.info(f"Received message from {message['user_id']}: {message['text']}")
+        user_email = message.get('metadata', {}).get('user_email', 'unknown')
+        log.info(f"Received message from {message['user_id']} ({user_email}): {message['text']}")
 
         # Example: Echo the message back
         user_id = message.get('user_id')

@@ -267,7 +267,8 @@ Slack provider_data (examples):
 {
     "thread_ts": "1700000000.123456",  # comment: parent thread timestamp
     "channel_type": "channel",         # comment: channel, group, im, mpim
-    "event_type": "app_mention"        # comment: app_mention or message
+    "event_type": "app_mention",       # comment: app_mention or message
+    "user_email": "user@example.com"   # comment: user's email from Slack profile
 }
 ```
 
