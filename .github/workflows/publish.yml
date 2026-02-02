@@ -6,7 +6,30 @@ on:
       - "v*"
 
 jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install project and security tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[all,dev]
+          python -m pip install pip-audit bandit
+      - name: pip-audit
+        run: pip-audit
+      - name: bandit
+        run: bandit -c bandit.yaml -r src -ll
+      - name: semgrep
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: p/ci
+          error: true
+
   publish:
+    needs: security
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
