@@ -13,6 +13,8 @@ class MockMessageProvider(MessageProvider):
         self.sent_reactions = []
         self.updated_messages = []
         self.listeners = []
+        self.status_listeners = []
+        self.cancellation_listeners = []
 
     def send_message(self, message, user_id, channel=None, previous_message_id=None):
         self.sent_messages.append({
@@ -44,6 +46,21 @@ class MockMessageProvider(MessageProvider):
 
     def start(self):
         pass
+
+    def get_formatting_rules(self) -> str:
+        return "mock"
+
+    def request_status_update(self, request_id, channel=None):
+        return {"success": True, "request_id": request_id, "status": "mock_status"}
+
+    def register_request_status_update_listener(self, callback):
+        self.status_listeners.append(callback)
+
+    def request_cancellation(self, request_id, channel=None):
+        return {"success": True, "request_id": request_id, "status": "cancelled"}
+
+    def register_request_cancellation_listener(self, callback):
+        self.cancellation_listeners.append(callback)
 
 
 class TestMessageProvider:
@@ -100,3 +117,42 @@ class TestMessageProvider:
         provider.register_message_listener(handler)
         assert len(provider.listeners) == 1
         assert provider.listeners[0] == handler
+
+    def test_get_formatting_rules(self):
+        """Test get_formatting_rules method."""
+        provider = MockMessageProvider()
+        assert provider.get_formatting_rules() == "mock"
+
+    def test_request_status_update(self):
+        """Test request_status_update method."""
+        provider = MockMessageProvider()
+        result = provider.request_status_update("request123")
+        assert result['success'] is True
+        assert result['request_id'] == "request123"
+
+    def test_register_request_status_update_listener(self):
+        """Test register_request_status_update_listener method."""
+        provider = MockMessageProvider()
+
+        def handler(request_id, status):
+            pass
+
+        provider.register_request_status_update_listener(handler)
+        assert len(provider.status_listeners) == 1
+
+    def test_request_cancellation(self):
+        """Test request_cancellation method."""
+        provider = MockMessageProvider()
+        result = provider.request_cancellation("request123")
+        assert result['success'] is True
+        assert result['request_id'] == "request123"
+
+    def test_register_request_cancellation_listener(self):
+        """Test register_request_cancellation_listener method."""
+        provider = MockMessageProvider()
+
+        def handler(request_id, info):
+            pass
+
+        provider.register_request_cancellation_listener(handler)
+        assert len(provider.cancellation_listeners) == 1

@@ -81,3 +81,61 @@ class MessageProvider(ABC):
         This is typically a blocking call that runs the provider until stopped.
         """
         pass
+
+    @abstractmethod
+    def get_formatting_rules(self) -> str:
+        """
+        Return formatting rules/syntax description for this provider.
+
+        Returns:
+            String describing the formatting syntax (e.g., "mrkdwn", "markdown", "plaintext")
+        """
+        pass
+
+    @abstractmethod
+    def request_status_update(self, request_id: str, channel: Optional[str] = None) -> dict:
+        """
+        Poll for status of a previously submitted request.
+
+        Args:
+            request_id: ID of the request to check
+            channel: Optional channel/subscriber context
+
+        Returns:
+            Dict with status info (e.g., pending, processing, completed, failed)
+        """
+        pass
+
+    @abstractmethod
+    def register_request_status_update_listener(self, callback: Callable) -> None:
+        """
+        Register a callback for request status update notifications.
+
+        Args:
+            callback: Function called with (request_id, status_info) when status changes
+        """
+        pass
+
+    @abstractmethod
+    def request_cancellation(self, request_id: str, channel: Optional[str] = None) -> dict:
+        """
+        Request cancellation of an active request.
+
+        Args:
+            request_id: ID of the request to cancel
+            channel: Optional channel/subscriber context
+
+        Returns:
+            Dict with success status and cancellation info
+        """
+        pass
+
+    @abstractmethod
+    def register_request_cancellation_listener(self, callback: Callable) -> None:
+        """
+        Register a callback for cancellation notifications.
+
+        Args:
+            callback: Function called with (request_id, cancellation_info) when cancelled
+        """
+        pass

@@ -270,3 +270,23 @@ class RelayMessageProvider(MessageProvider):
         """Stop the relay message provider."""
         log.info("[RelayMessageProvider] Stopping...")
         self.running = False
+
+    def get_formatting_rules(self) -> str:
+        """Relay passes through formatting from source provider."""
+        return "passthrough"
+
+    def request_status_update(self, request_id: str, channel: Optional[str] = None) -> dict:
+        """Request status update through relay. Currently not implemented."""
+        return {"success": False, "error": "Request status tracking not yet implemented for relay"}
+
+    def register_request_status_update_listener(self, callback: Callable) -> None:
+        """Register callback for status updates. Currently not implemented."""
+        log.debug("[RelayMessageProvider] Status update listeners not yet implemented")
+
+    def request_cancellation(self, request_id: str, channel: Optional[str] = None) -> dict:
+        """Request cancellation through relay. Currently not implemented."""
+        return {"success": False, "error": "Request cancellation not yet implemented for relay"}
+
+    def register_request_cancellation_listener(self, callback: Callable) -> None:
+        """Register callback for cancellation. Currently not implemented."""
+        log.debug("[RelayMessageProvider] Cancellation listeners not yet implemented")

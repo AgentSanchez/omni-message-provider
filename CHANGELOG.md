@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.2.6] - 2026-02-11
+
+### Added
+- FastAPI: `provider_id` required parameter for provider identification
+- FastAPI: Pluggable authentication layer with `authentication_provider` and `session_validator` callbacks
+- FastAPI: Subscriber registration with `user_id` field and optional `auth_details`
+- FastAPI: Re-registration support with existing `subscriber_id`
+- FastAPI: Unified message types (`message`, `status_request`, `cancellation_request`) via single endpoint
+- FastAPI: Request context cleanup with configurable TTL (`request_context_ttl`, default 1 hour)
+- FastAPI: Max request context limit to prevent memory leaks (`max_request_contexts`, default 10000)
+
+### Changed
+- FastAPI: Renamed "registered clients" to "subscribers" for clarity
+- FastAPI: `channel` field now required in incoming messages (must be valid `subscriber_id`)
+- FastAPI: All requests go through `POST /message/process` with `type` field
+- FastAPI: Removed separate `/status/{request_id}` and `/cancel/{request_id}` endpoints
+- FastAPI: Status and cancellation requests are now message types handled by orchestrator
+
+### Removed
+- FastAPI: Automatic status message queueing (orchestrator sends messages directly)
+
 ## [0.2.5] - 2026-02-02
 ### Added
 - Slack: in "mention" mode, thread replies are forwarded if the bot has previously responded in that thread (`active_thread_ttl` configurable, default 24h)
@@ -87,6 +109,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Example files for all providers and relay components
 - Test documentation with coverage guidelines
 
+[0.2.6]: https://github.com/AgentSanchez/omni-message-provider/releases/tag/v0.2.6
 [0.2.5]: https://github.com/AgentSanchez/omni-message-provider/releases/tag/v0.2.5
 [0.2.2]: https://github.com/AgentSanchez/omni-message-provider/releases/tag/v0.2.2
 [0.2.3]: https://github.com/AgentSanchez/omni-message-provider/releases/tag/v0.2.3

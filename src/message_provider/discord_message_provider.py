@@ -466,3 +466,23 @@ class DiscordMessageProvider(MessageProvider):
         except Exception as e:
             log.error(f"[DiscordMessageProvider] Failed to start bot: {str(e)}")
             raise
+
+    def get_formatting_rules(self) -> str:
+        """Return Discord's markdown formatting syntax."""
+        return "markdown"
+
+    def request_status_update(self, request_id: str, channel: Optional[str] = None) -> dict:
+        """Discord doesn't have built-in request tracking. Returns not yet supported."""
+        return {"success": False, "error": "Request status tracking not yet supported for Discord"}
+
+    def register_request_status_update_listener(self, callback: Callable) -> None:
+        """Discord doesn't have built-in request tracking. No-op."""
+        log.debug("[DiscordMessageProvider] Status update listeners not yet supported")
+
+    def request_cancellation(self, request_id: str, channel: Optional[str] = None) -> dict:
+        """Discord doesn't have built-in request cancellation. Returns not yet supported."""
+        return {"success": False, "error": "Request cancellation not yet supported for Discord"}
+
+    def register_request_cancellation_listener(self, callback: Callable) -> None:
+        """Discord doesn't have built-in request cancellation. No-op."""
+        log.debug("[DiscordMessageProvider] Cancellation listeners not yet supported")

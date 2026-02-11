@@ -587,3 +587,23 @@ class JiraMessageProvider(MessageProvider):
             self.polling_thread.join(timeout=5)
 
         log.info("[JiraMessageProvider] Stopped")
+
+    def get_formatting_rules(self) -> str:
+        """Return Jira's wiki notation formatting syntax."""
+        return "jira"
+
+    def request_status_update(self, request_id: str, channel: Optional[str] = None) -> dict:
+        """Jira doesn't have built-in request tracking. Returns not supported."""
+        return {"success": False, "error": "Request status tracking not yet supported for Jira"}
+
+    def register_request_status_update_listener(self, callback: Callable) -> None:
+        """Jira doesn't have built-in request tracking. No-op."""
+        log.debug("[JiraMessageProvider] Status update listeners not yet supported")
+
+    def request_cancellation(self, request_id: str, channel: Optional[str] = None) -> dict:
+        """Jira doesn't have built-in request cancellation. Returns not supported."""
+        return {"success": False, "error": "Request cancellation not yet supported for Jira"}
+
+    def register_request_cancellation_listener(self, callback: Callable) -> None:
+        """Jira doesn't have built-in request cancellation. No-op."""
+        log.debug("[JiraMessageProvider] Cancellation listeners not yet supported")
