@@ -140,6 +140,7 @@ class SlackMessageProvider(MessageProvider):
 
         # Message listeners
         self.message_listeners = []
+        self.thread_clear_listeners = []
 
         # Setup event handlers
         self._setup_handlers()
@@ -562,3 +563,33 @@ class SlackMessageProvider(MessageProvider):
     def register_request_cancellation_listener(self, callback: Callable) -> None:
         """Slack doesn't have built-in request cancellation. No-op."""
         log.debug("[SlackMessageProvider] Cancellation listeners not yet supported")
+
+    def clear_thread(self, channel: str, metadata: Optional[dict] = None) -> dict:
+        """
+        Signal that a conversation in a channel should end.
+
+        Args:
+            channel: The channel ID whose conversation is ending
+            metadata: Optional metadata about the clear event
+
+        Returns:
+            dict with success status
+        """
+        if not channel:
+            return {"success": False, "error": "channel is required"}
+
+        log.info(f"[SlackMessageProvider] Clearing thread for {channel}")
+
+        for listener in self.thread_clear_listeners:
+            try:
+                listener(channel, metadata or {})
+            except Exception as e:
+                log.error(f"[SlackMessageProvider] Thread clear listener error: {e}")
+
+        return {"success": True, "channel": channel}
+
+    def register_thread_clear_listener(self, callback: Callable) -> None:
+        """Register callback for thread clear events."""
+        if not callable(callback):
+            raise ValueError("Callback must be a callable function")
+        self.thread_clear_listeners.append(callback)

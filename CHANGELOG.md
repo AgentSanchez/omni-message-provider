@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.7] - 2026-02-11
+
+### Added
+- httpSMS: New `HttpSmsMessageProvider` for [httpSMS](https://github.com/NdoleStudio/httpsms) integration
+- httpSMS: Turn your Android phone into an SMS gateway
+- httpSMS: Webhook receiver at `/webhook` for incoming messages
+- httpSMS: Pluggable `message_authenticator` callback for authenticating incoming messages
+- httpSMS: Built-in `/help` and `/clear` commands
+- httpSMS: `help_text` parameter for custom help message
+- httpSMS: `initial_text` parameter for welcome message to new conversations
+- httpSMS: `clear_thread()` method and `register_thread_clear_listener()` for conversation management
+- httpSMS: Timestamp-based message IDs
+
 ## [0.2.6] - 2026-02-11
 
 ### Added
@@ -109,6 +122,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Example files for all providers and relay components
 - Test documentation with coverage guidelines
 
+[0.2.7]: https://github.com/AgentSanchez/omni-message-provider/releases/tag/v0.2.7
 [0.2.6]: https://github.com/AgentSanchez/omni-message-provider/releases/tag/v0.2.6
 [0.2.5]: https://github.com/AgentSanchez/omni-message-provider/releases/tag/v0.2.5
 [0.2.2]: https://github.com/AgentSanchez/omni-message-provider/releases/tag/v0.2.2

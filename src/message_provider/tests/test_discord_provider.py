@@ -13,7 +13,6 @@ def mock_discord_intents():
     return intents
 
 
-@pytest.mark.asyncio
 class TestDiscordMessageProvider:
     """Test cases for DiscordMessageProvider."""
 

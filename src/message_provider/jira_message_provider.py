@@ -110,6 +110,7 @@ class JiraMessageProvider(MessageProvider):
 
         # Message listeners
         self.message_listeners: List[Callable] = []
+        self.thread_clear_listeners: List[Callable] = []
 
         # Last poll time
         self.last_poll_time: Optional[datetime] = None
@@ -607,3 +608,33 @@ class JiraMessageProvider(MessageProvider):
     def register_request_cancellation_listener(self, callback: Callable) -> None:
         """Jira doesn't have built-in request cancellation. No-op."""
         log.debug("[JiraMessageProvider] Cancellation listeners not yet supported")
+
+    def clear_thread(self, channel: str, metadata: Optional[dict] = None) -> dict:
+        """
+        Signal that a conversation on an issue should end.
+
+        Args:
+            channel: The issue key whose conversation is ending
+            metadata: Optional metadata about the clear event
+
+        Returns:
+            dict with success status
+        """
+        if not channel:
+            return {"success": False, "error": "channel (issue key) is required"}
+
+        log.info(f"[JiraMessageProvider] Clearing thread for {channel}")
+
+        for listener in self.thread_clear_listeners:
+            try:
+                listener(channel, metadata or {})
+            except Exception as e:
+                log.error(f"[JiraMessageProvider] Thread clear listener error: {e}")
+
+        return {"success": True, "channel": channel}
+
+    def register_thread_clear_listener(self, callback: Callable) -> None:
+        """Register callback for thread clear events."""
+        if not callable(callback):
+            raise ValueError("Callback must be a callable function")
+        self.thread_clear_listeners.append(callback)

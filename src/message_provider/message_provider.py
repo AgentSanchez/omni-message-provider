@@ -139,3 +139,28 @@ class MessageProvider(ABC):
             callback: Function called with (request_id, cancellation_info) when cancelled
         """
         pass
+
+    def clear_thread(self, channel: str, metadata: Optional[dict] = None) -> dict:
+        """
+        Signal that a conversation/thread should end.
+
+        Applications call this when a conversation should be marked as complete
+        and not continued. Useful for session management and cleanup.
+
+        Args:
+            channel: Channel/thread identifier to clear
+            metadata: Optional metadata about the clear event
+
+        Returns:
+            Dict with success status
+        """
+        return {"success": False, "error": "Not supported by this provider"}
+
+    def register_thread_clear_listener(self, callback: Callable) -> None:
+        """
+        Register a callback for thread clear events.
+
+        Args:
+            callback: Function called with (channel, metadata) when thread is cleared
+        """
+        pass

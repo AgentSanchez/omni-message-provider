@@ -2,11 +2,12 @@
 
 from typing import TYPE_CHECKING, Literal, Type, overload
 
-__version__ = "0.2.6"
+__version__ = "0.2.7"
 
 # Import base classes and components without optional dependencies
 from message_provider.message_provider import MessageProvider
 from message_provider.fastapi_message_provider import FastAPIMessageProvider
+from message_provider.httpsms_message_provider import HttpSmsMessageProvider
 from message_provider.relay.relay_hub import RelayHub
 from message_provider.relay.relay_message_provider import RelayMessageProvider
 from message_provider.relay.relay_client import RelayClient
@@ -14,6 +15,7 @@ from message_provider.relay.relay_client import RelayClient
 __all__ = [
     "MessageProvider",
     "FastAPIMessageProvider",
+    "HttpSmsMessageProvider",
     "SlackMessageProvider",
     "DiscordMessageProvider",
     "JiraMessageProvider",

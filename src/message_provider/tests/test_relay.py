@@ -5,7 +5,6 @@ from unittest.mock import Mock, AsyncMock, MagicMock, patch
 import asyncio
 
 
-@pytest.mark.asyncio
 class TestRelayHub:
     """Test cases for RelayHub."""
 
@@ -39,7 +38,6 @@ class TestRelayHub:
         mock_provider.register_message_listener.assert_called_once()
 
 
-@pytest.mark.asyncio
 class TestRelayMessageProvider:
     """Test cases for RelayMessageProvider."""
 
@@ -102,7 +100,6 @@ class TestRelayMessageProvider:
         assert 'status' in result
 
 
-@pytest.mark.asyncio
 class TestRelayClient:
     """Test cases for RelayClient."""
 

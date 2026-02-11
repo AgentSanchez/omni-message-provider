@@ -1,11 +1,11 @@
 # Omni Message Provider
 
-A unified Python interface for building chatbots and automated systems across multiple messaging platforms (Discord, Slack, Jira) with optional distributed relay support for scalable deployments.
+A unified Python interface for building chatbots and automated systems across multiple messaging platforms (Discord, Slack, Jira, httpSMS) with optional distributed relay support for scalable deployments.
 
 ## Features
 
 - **Unified Interface**: Single `MessageProvider` interface for all platforms
-- **Multiple Platforms**: Discord, Slack, Jira, FastAPI (HTTP/REST), and polling clients
+- **Multiple Platforms**: Discord, Slack, Jira, httpSMS, FastAPI (HTTP/REST), and polling clients
 - **Distributed Architecture**: Optional WebSocket relay for microservices deployments
 - **Authentication Layer**: Pluggable authentication for HTTP provider
 - **Request Tracking**: Status updates and cancellation support
@@ -145,6 +145,51 @@ def message_handler(message):
 
 provider.register_message_listener(message_handler)
 provider.start()
+```
+
+### httpSMS Provider
+
+[httpSMS](https://github.com/NdoleStudio/httpsms) turns your Android phone into an SMS gateway. This provider integrates with the httpSMS API to send and receive SMS messages.
+
+**Setup:** See [httpSMS GitHub](https://github.com/NdoleStudio/httpsms) for installation and configuration.
+
+**Built-in commands:**
+- `/help` - Sends help text to the user
+- `/clear` - Ends the conversation (triggers thread clear listeners)
+
+```python
+import os
+from message_provider import HttpSmsMessageProvider
+
+provider = HttpSmsMessageProvider(
+    api_key=os.getenv("HTTPSMS_API_KEY"),
+    phone_number="+15551234567",  # Your phone number registered with httpSMS
+    client_id="httpsms:main",
+    help_text="Commands: /help, /clear. Or just send a message!",  # Optional
+    initial_text="Welcome! Send /help for available commands."  # Optional: sent to new users
+)
+
+def message_handler(message):
+    sender = message['user_id']  # Sender's phone number (= channel)
+    text = message['text']
+
+    # Reply to the sender
+    provider.send_message(
+        message=f"Thanks for your message: {text}",
+        user_id="bot",
+        channel=sender  # Recipient phone number
+    )
+
+# Handle conversation endings (from /clear or programmatic clear_thread)
+def on_thread_clear(channel, metadata):
+    print(f"Conversation with {channel} ended: {metadata.get('reason')}")
+
+provider.register_message_listener(message_handler)
+provider.register_thread_clear_listener(on_thread_clear)
+provider.start()  # Starts webhook server on port 9548
+
+# Programmatically end a conversation:
+# provider.clear_thread("+15559876543", metadata={"reason": "task_complete"})
 ```
 
 ### FastAPI/HTTP Provider
@@ -512,6 +557,15 @@ Providers are stateless -- they do not cache message or channel metadata interna
 - `update_message()` → Change ticket status
 - `get_formatting_rules()` → Returns "jira"
 
+### httpSMS
+- `client_id` = Provider instance identifier (e.g., "httpsms:main")
+- `channel` = Recipient phone number (e.g., "+15559876543")
+- `send_message(channel=...)` → Send SMS to phone number (channel required)
+- `send_reaction(channel=...)` → Send reaction as text message "[emoji]" (channel required)
+- `update_message(channel=...)` → Send update as text message "[Update] ..." (channel required)
+- `get_formatting_rules()` → Returns "plaintext"
+- **Setup:** [httpSMS GitHub](https://github.com/NdoleStudio/httpsms)
+
 ### FastAPI/HTTP
 - `provider_id` = Provider instance identifier (e.g., "http:my-service")
 - `channel` = Subscriber UUID (returned at registration)
@@ -577,6 +631,18 @@ provider = SlackMessageProvider(
     allowed_channels=["#support"]
 )
 
+# httpSMS (https://github.com/NdoleStudio/httpsms)
+provider = HttpSmsMessageProvider(
+    api_key=os.getenv("HTTPSMS_API_KEY"),
+    phone_number="+15551234567",
+    client_id="httpsms:main",
+    message_authenticator=my_auth_func,  # Optional: authenticate incoming messages
+    help_text="Custom help message",     # Optional: sent on /help command
+    initial_text="Welcome message",      # Optional: sent to new conversations
+    host="0.0.0.0",
+    port=9548
+)
+
 # FastAPI/HTTP
 provider = FastAPIMessageProvider(
     provider_id="http:my-service",
@@ -585,7 +651,6 @@ provider = FastAPIMessageProvider(
     session_validator=my_validator_func,   # Optional
     request_context_ttl=3600,              # Cleanup tracked requests after 1 hour (default)
     max_request_contexts=10000,            # Force cleanup if exceeds this count (default)
-    session_validator=my_validator_func,   # Optional
     host="0.0.0.0",
     port=9547
 )

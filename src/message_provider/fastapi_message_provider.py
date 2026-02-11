@@ -121,6 +121,7 @@ class FastAPIMessageProvider(MessageProvider):
         self.request_context: Dict[str, dict] = {}  # request_id -> {channel, user_id, thread_id, created_at}
         self.status_update_listeners: List[Callable] = []
         self.cancellation_listeners: List[Callable] = []
+        self.thread_clear_listeners: List[Callable] = []
         self._last_cleanup = datetime.utcnow()
 
         self._setup_routes()
@@ -449,6 +450,36 @@ class FastAPIMessageProvider(MessageProvider):
                 listener(request_id, cancellation_info)
             except Exception as e:
                 log.error(f"[FastAPIMessageProvider] Cancellation listener error: {e}")
+
+    def clear_thread(self, channel: str, metadata: Optional[dict] = None) -> dict:
+        """
+        Signal that a conversation with a subscriber should end.
+
+        Args:
+            channel: The subscriber_id whose conversation is ending
+            metadata: Optional metadata about the clear event
+
+        Returns:
+            dict with success status
+        """
+        if not channel:
+            return {"success": False, "error": "channel (subscriber_id) is required"}
+
+        log.info(f"[FastAPIMessageProvider] Clearing thread for {channel}")
+
+        for listener in self.thread_clear_listeners:
+            try:
+                listener(channel, metadata or {})
+            except Exception as e:
+                log.error(f"[FastAPIMessageProvider] Thread clear listener error: {e}")
+
+        return {"success": True, "channel": channel}
+
+    def register_thread_clear_listener(self, callback: Callable) -> None:
+        """Register callback for thread clear events."""
+        if not callable(callback):
+            raise ValueError("Callback must be a callable function")
+        self.thread_clear_listeners.append(callback)
 
     def _setup_routes(self):
         @self.app.post("/subscriber/register")
