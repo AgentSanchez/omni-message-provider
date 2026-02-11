@@ -522,21 +522,36 @@ Providers are stateless -- they do not cache message or channel metadata interna
 
 ## Message Format
 
-All providers return messages in standardized format:
+All providers use the same message structure for incoming and outgoing messages:
 
 ```python
 {
-    "type": "new_issue" | "new_comment" | "new_message",
-    "message_id": "unique-id",
-    "text": "message content",
+    "type": "message",              # See message types below
+    "message_id": "msg_abc123",
+    "text": "message content",      # Optional for non-message types
     "user_id": "user-identifier",
     "channel": "channel-identifier",
     "thread_id": "thread-identifier",  # Optional
+    "request_id": "msg_xyz789",     # For status/cancellation requests
     "metadata": {
-        "client_id": "platform:instance",  # or "provider_id" for FastAPI
+        "provider_id": "http:my-service",  # or "client_id" for Discord/Slack/Jira
         # Platform-specific fields
-    }
+    },
+    "timestamp": "2026-02-11T10:30:00Z"
 }
+```
+
+### Message Types
+
+| Type | Description | Key Fields |
+|------|-------------|------------|
+| `message` | Regular text message | `text` (required) |
+| `status_request` | Client requesting status update | `request_id` |
+| `cancellation_request` | Client requesting cancellation | `request_id` |
+| `reaction` | Emoji/label reaction | `reaction`, `message_id` |
+| `update` | Message edit/update | `text`, `message_id` |
+
+For Discord/Slack/Jira, incoming messages use types like `new_message`, `new_issue`, `new_comment`.
 ```
 
 ## Configuration
