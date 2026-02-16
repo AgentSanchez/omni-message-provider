@@ -1023,6 +1023,21 @@ class TestHttpSmsHealthAndMisc:
         assert result['success'] is False
         assert "Not supported" in result['error']
 
+    def test_register_reaction_listener_noop(self):
+        """Test that register_reaction_listener is a no-op for SMS."""
+        from message_provider.httpsms_message_provider import HttpSmsMessageProvider
+
+        provider = HttpSmsMessageProvider(
+            api_key="test-key",
+            phone_number="+15551234567"
+        )
+
+        # Should not raise, just silently ignore
+        provider.register_reaction_listener(lambda r: None)
+
+        # httpSMS doesn't store reaction listeners (no-op)
+        assert not hasattr(provider, 'reaction_listeners') or len(getattr(provider, 'reaction_listeners', [])) == 0
+
     def test_default_thread_id_constant(self):
         from message_provider.httpsms_message_provider import HttpSmsMessageProvider
 

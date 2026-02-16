@@ -21,6 +21,14 @@ class IncomingMessage(BaseModel):
     metadata: Optional[dict] = None
 
 
+class IncomingReaction(BaseModel):
+    message_id: str  # ID of the message being reacted to
+    reaction: str  # Emoji or reaction identifier
+    user_id: str  # Who is reacting
+    channel: str  # Required - must be a valid subscriber_id
+    metadata: Optional[dict] = None
+
+
 class SubscriberRegistration(BaseModel):
     subscriber_id: Optional[str] = None  # Client-specified ID for re-registration
     user_id: str  # Required - identifies the user
@@ -115,6 +123,7 @@ class FastAPIMessageProvider(MessageProvider):
 
         # Message listeners (orchestrator callbacks)
         self.message_listeners: List[Callable] = []
+        self.reaction_listeners: List[Callable] = []
 
         # Request tracking for status updates and cancellation
         self.request_status: Dict[str, dict] = {}  # request_id -> status_info
@@ -310,6 +319,13 @@ class FastAPIMessageProvider(MessageProvider):
             except Exception as e:
                 log.error(f"[FastAPIMessageProvider] Listener error: {e}")
 
+    def _notify_reaction_listeners(self, reaction_data: dict):
+        for listener in self.reaction_listeners:
+            try:
+                listener(reaction_data)
+            except Exception as e:
+                log.error(f"[FastAPIMessageProvider] Reaction listener error: {e}")
+
     def _handle_incoming(self, message_data: dict):
         """
         Route incoming messages to appropriate handler based on type,
@@ -481,6 +497,24 @@ class FastAPIMessageProvider(MessageProvider):
             raise ValueError("Callback must be a callable function")
         self.thread_clear_listeners.append(callback)
 
+    def register_reaction_listener(self, callback: Callable) -> None:
+        """
+        Register a callback for reaction events.
+
+        Callback receives a dict with:
+            - message_id: ID of the message that was reacted to
+            - reaction: The emoji/reaction
+            - user_id: ID of the user who reacted
+            - channel: Subscriber ID where the reaction occurred
+            - metadata: Additional metadata
+
+        Args:
+            callback: Function that takes a reaction dict as parameter
+        """
+        if not callable(callback):
+            raise ValueError("Callback must be a callable function")
+        self.reaction_listeners.append(callback)
+
     def _setup_routes(self):
         @self.app.post("/subscriber/register")
         async def register_subscriber(
@@ -615,6 +649,54 @@ class FastAPIMessageProvider(MessageProvider):
                 status="received",
                 timestamp=timestamp
             )
+
+        @self.app.post("/reaction/process")
+        async def process_reaction(
+            reaction: IncomingReaction,
+            authorization: Optional[str] = Header(None)
+        ):
+            """Process an incoming reaction from a subscriber."""
+            # Validate subscriber exists
+            subscriber = self.registered_subscribers.get(reaction.channel)
+            if not subscriber:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Subscriber not found: {reaction.channel}"
+                )
+
+            # Validate session if session_validator is configured
+            if self.session_validator:
+                session_token = self._extract_session_token(authorization)
+                if not session_token or not self.session_validator(reaction.channel, session_token):
+                    raise HTTPException(status_code=401, detail="Invalid or missing session token")
+
+            timestamp = datetime.utcnow().isoformat()
+
+            # Build reaction data
+            reaction_data = {
+                "message_id": reaction.message_id,
+                "reaction": reaction.reaction,
+                "user_id": reaction.user_id,
+                "channel": reaction.channel,
+                "metadata": {
+                    "provider_id": self.provider_id,
+                    "subscriber_id": reaction.channel,
+                    **(reaction.metadata or {})
+                },
+                "timestamp": timestamp
+            }
+
+            log.info(f"[FastAPIMessageProvider] Reaction {reaction.reaction} from {reaction.user_id} on {reaction.message_id}")
+
+            # Notify reaction listeners
+            self._notify_reaction_listeners(reaction_data)
+
+            return {
+                "status": "received",
+                "message_id": reaction.message_id,
+                "reaction": reaction.reaction,
+                "timestamp": timestamp
+            }
 
         @self.app.get("/subscriber/list")
         async def list_subscribers(authorization: Optional[str] = Header(None)):

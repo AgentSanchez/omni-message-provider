@@ -417,3 +417,201 @@ class TestFastAPIMessageProvider:
         provider = FastAPIMessageProvider(provider_id="test:provider")
         result = provider.request_cancellation("unknown-request-id")
         assert result['success'] is False
+
+    def test_register_reaction_listener(self):
+        """Test registering a reaction listener."""
+        from message_provider.fastapi_message_provider import FastAPIMessageProvider
+
+        provider = FastAPIMessageProvider(provider_id="test:provider")
+
+        def handler(reaction):
+            pass
+
+        provider.register_reaction_listener(handler)
+        assert len(provider.reaction_listeners) == 1
+
+    def test_register_reaction_listener_not_callable(self):
+        """Test that non-callable reaction listener raises error."""
+        from message_provider.fastapi_message_provider import FastAPIMessageProvider
+
+        provider = FastAPIMessageProvider(provider_id="test:provider")
+
+        with pytest.raises(ValueError, match="Callback must be a callable"):
+            provider.register_reaction_listener("not_a_function")
+
+    def test_process_reaction_requires_valid_subscriber(self):
+        """Test that /reaction/process requires a valid subscriber."""
+        from message_provider.fastapi_message_provider import FastAPIMessageProvider
+
+        provider = FastAPIMessageProvider(provider_id="test:provider")
+        client = TestClient(provider.app)
+
+        response = client.post(
+            "/reaction/process",
+            json={
+                "message_id": "msg123",
+                "reaction": "👍",
+                "user_id": "user123",
+                "channel": "unknown-subscriber"
+            }
+        )
+
+        assert response.status_code == 404
+        assert "not found" in response.json()['detail'].lower()
+
+    def test_process_reaction_with_valid_subscriber(self):
+        """Test /reaction/process with a valid subscriber."""
+        from message_provider.fastapi_message_provider import FastAPIMessageProvider
+
+        provider = FastAPIMessageProvider(provider_id="test:provider")
+        client = TestClient(provider.app)
+
+        # Register subscriber first
+        reg_response = client.post(
+            "/subscriber/register",
+            json={"user_id": "user123", "source_type": "api"}
+        )
+        subscriber_id = reg_response.json()['subscriber_id']
+
+        # Register reaction listener
+        received_reactions = []
+        provider.register_reaction_listener(lambda r: received_reactions.append(r))
+
+        # Send reaction
+        response = client.post(
+            "/reaction/process",
+            json={
+                "message_id": "msg_abc123",
+                "reaction": "👍",
+                "user_id": "user123",
+                "channel": subscriber_id
+            }
+        )
+
+        assert response.status_code == 200
+        assert response.json()['status'] == "received"
+        assert response.json()['message_id'] == "msg_abc123"
+        assert response.json()['reaction'] == "👍"
+
+        assert len(received_reactions) == 1
+        assert received_reactions[0]['reaction'] == "👍"
+        assert received_reactions[0]['message_id'] == "msg_abc123"
+        assert received_reactions[0]['user_id'] == "user123"
+        assert received_reactions[0]['channel'] == subscriber_id
+        assert received_reactions[0]['metadata']['provider_id'] == "test:provider"
+
+    def test_process_reaction_with_session_validation(self):
+        """Test /reaction/process with session validation."""
+        from message_provider.fastapi_message_provider import FastAPIMessageProvider
+
+        def session_validator(subscriber_id, session_token):
+            return session_token == "valid-token"
+
+        provider = FastAPIMessageProvider(
+            provider_id="test:provider",
+            session_validator=session_validator
+        )
+        client = TestClient(provider.app)
+
+        # Register subscriber
+        reg_response = client.post(
+            "/subscriber/register",
+            json={"user_id": "user123", "source_type": "api"}
+        )
+        subscriber_id = reg_response.json()['subscriber_id']
+
+        # Try without valid session
+        response = client.post(
+            "/reaction/process",
+            json={
+                "message_id": "msg123",
+                "reaction": "👍",
+                "user_id": "user123",
+                "channel": subscriber_id
+            },
+            headers={"Authorization": "Bearer invalid-token"}
+        )
+        assert response.status_code == 401
+
+        # Try with valid session
+        response = client.post(
+            "/reaction/process",
+            json={
+                "message_id": "msg123",
+                "reaction": "👍",
+                "user_id": "user123",
+                "channel": subscriber_id
+            },
+            headers={"Authorization": "Bearer valid-token"}
+        )
+        assert response.status_code == 200
+
+    def test_process_reaction_with_metadata(self):
+        """Test /reaction/process passes through custom metadata."""
+        from message_provider.fastapi_message_provider import FastAPIMessageProvider
+
+        provider = FastAPIMessageProvider(provider_id="test:provider")
+        client = TestClient(provider.app)
+
+        # Register subscriber
+        reg_response = client.post(
+            "/subscriber/register",
+            json={"user_id": "user123", "source_type": "api"}
+        )
+        subscriber_id = reg_response.json()['subscriber_id']
+
+        received_reactions = []
+        provider.register_reaction_listener(lambda r: received_reactions.append(r))
+
+        response = client.post(
+            "/reaction/process",
+            json={
+                "message_id": "msg123",
+                "reaction": "👍",
+                "user_id": "user123",
+                "channel": subscriber_id,
+                "metadata": {"context": "approval", "priority": "high"}
+            }
+        )
+
+        assert response.status_code == 200
+        assert received_reactions[0]['metadata']['context'] == "approval"
+        assert received_reactions[0]['metadata']['priority'] == "high"
+
+    def test_reaction_listener_error_does_not_break_endpoint(self):
+        """Test that a failing reaction listener doesn't break the endpoint."""
+        from message_provider.fastapi_message_provider import FastAPIMessageProvider
+
+        provider = FastAPIMessageProvider(provider_id="test:provider")
+        client = TestClient(provider.app)
+
+        # Register subscriber
+        reg_response = client.post(
+            "/subscriber/register",
+            json={"user_id": "user123", "source_type": "api"}
+        )
+        subscriber_id = reg_response.json()['subscriber_id']
+
+        results = []
+
+        def failing_listener(r):
+            raise Exception("Listener failed!")
+
+        def working_listener(r):
+            results.append(r)
+
+        provider.register_reaction_listener(failing_listener)
+        provider.register_reaction_listener(working_listener)
+
+        response = client.post(
+            "/reaction/process",
+            json={
+                "message_id": "msg123",
+                "reaction": "👍",
+                "user_id": "user123",
+                "channel": subscriber_id
+            }
+        )
+
+        assert response.status_code == 200
+        assert len(results) == 1

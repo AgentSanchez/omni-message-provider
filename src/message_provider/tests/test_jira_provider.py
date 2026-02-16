@@ -203,3 +203,22 @@ class TestJiraMessageProvider:
         mock_jira.issue.assert_called_once_with("PROJECT-123")
         mock_jira.transitions.assert_called_once_with(mock_issue)
         mock_jira.transition_issue.assert_called_once_with(mock_issue, '21')
+
+    @patch('message_provider.jira_message_provider.JIRA')
+    def test_register_reaction_listener_noop(self, mock_jira_class):
+        """Test that register_reaction_listener is a no-op for Jira."""
+        from message_provider.jira_message_provider import JiraMessageProvider
+
+        provider = JiraMessageProvider(
+            server="https://jira.example.com",
+            email="test@example.com",
+            api_token="token123",
+            project_keys=["PROJECT"],
+            client_id="jira:test"
+        )
+
+        # Should not raise, just silently ignore
+        provider.register_reaction_listener(lambda r: None)
+
+        # Jira doesn't store reaction listeners (no-op)
+        assert not hasattr(provider, 'reaction_listeners') or len(getattr(provider, 'reaction_listeners', [])) == 0

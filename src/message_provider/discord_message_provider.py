@@ -82,6 +82,7 @@ class DiscordMessageProvider(MessageProvider):
 
         # Message listeners
         self.message_listeners = []
+        self.reaction_listeners = []
         self.thread_clear_listeners = []
 
         # Setup event handlers
@@ -158,6 +159,55 @@ class DiscordMessageProvider(MessageProvider):
             # Process bot commands
             await self.bot.process_commands(message)
 
+        @self.bot.event
+        async def on_reaction_add(reaction: discord.Reaction, user: discord.User):
+            """Handle incoming reactions."""
+            # Ignore bot's own reactions
+            if user == self.bot.user:
+                return
+
+            # Ignore other bots
+            if user.bot:
+                return
+
+            # Get emoji representation
+            if isinstance(reaction.emoji, str):
+                emoji_str = reaction.emoji
+            else:
+                # Custom emoji
+                emoji_str = str(reaction.emoji)
+
+            message = reaction.message
+            channel_id = str(message.channel.id)
+            message_id = str(message.id)
+
+            # Determine if this is in a thread
+            is_thread = isinstance(message.channel, discord.Thread)
+            thread_id = str(message.channel.id) if is_thread else None
+
+            # Build reaction data
+            reaction_data = {
+                "message_id": message_id,
+                "reaction": emoji_str,
+                "user_id": str(user.id),
+                "channel": channel_id,
+                "metadata": {
+                    "client_id": self.client_id,
+                    "user_name": str(user),
+                    "guild_id": str(message.guild.id) if message.guild else None,
+                    "guild_name": message.guild.name if message.guild else None,
+                    "channel_name": message.channel.name if hasattr(message.channel, 'name') else None,
+                    "is_thread": is_thread,
+                    "thread_id": thread_id,
+                    "message_author_id": str(message.author.id) if message.author else None,
+                }
+            }
+
+            log.info(f"[DiscordMessageProvider] Reaction {emoji_str} from {user.id} on {message_id}")
+
+            # Notify reaction listeners
+            self._notify_reaction_listeners(reaction_data)
+
     def _call_listener(self, listener: Callable, message_data: dict):
         try:
             listener(message_data)
@@ -175,6 +225,18 @@ class DiscordMessageProvider(MessageProvider):
                     self._call_listener(listener, message_data)
             except Exception as e:
                 log.error(f"[DiscordMessageProvider] Listener dispatch error: {str(e)}")
+
+    def _notify_reaction_listeners(self, reaction_data: dict):
+        """Notify all registered reaction listeners without blocking the event loop."""
+        loop = self.bot.loop
+        for listener in self.reaction_listeners:
+            try:
+                if loop and loop.is_running():
+                    loop.run_in_executor(None, self._call_listener, listener, reaction_data)
+                else:
+                    self._call_listener(listener, reaction_data)
+            except Exception as e:
+                log.error(f"[DiscordMessageProvider] Reaction listener dispatch error: {str(e)}")
 
     async def _get_channel(self, channel_id: Union[str, int]) -> Optional[discord.TextChannel]:
         """Get a Discord channel by ID."""
@@ -517,3 +579,22 @@ class DiscordMessageProvider(MessageProvider):
         if not callable(callback):
             raise ValueError("Callback must be a callable function")
         self.thread_clear_listeners.append(callback)
+
+    def register_reaction_listener(self, callback: Callable) -> None:
+        """
+        Register a callback for reaction events.
+
+        Callback receives a dict with:
+            - message_id: ID of the message that was reacted to
+            - reaction: The emoji
+            - user_id: ID of the user who reacted
+            - channel: Channel where the reaction occurred
+            - metadata: Discord-specific metadata
+
+        Args:
+            callback: Function that takes a reaction dict as parameter
+        """
+        if not callable(callback):
+            raise ValueError("Callback must be a callable function")
+        self.reaction_listeners.append(callback)
+        log.info("[DiscordMessageProvider] Registered reaction listener")

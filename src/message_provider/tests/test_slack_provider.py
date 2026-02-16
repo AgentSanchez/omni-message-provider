@@ -148,3 +148,145 @@ class TestSlackMessageProvider:
 
         assert result['success'] is True
         assert result['reaction'] == 'thumbsup'
+
+    def test_register_reaction_listener(self):
+        """Test registering a reaction listener."""
+        from message_provider.slack_message_provider import SlackMessageProvider
+
+        provider = SlackMessageProvider(
+            bot_token="xoxb-test",
+            client_id="slack:test",
+            app_token="xapp-test"
+        )
+
+        def handler(reaction):
+            pass
+
+        provider.register_reaction_listener(handler)
+        assert len(provider.reaction_listeners) == 1
+
+    def test_register_reaction_listener_not_callable(self):
+        """Test that non-callable reaction listener raises error."""
+        from message_provider.slack_message_provider import SlackMessageProvider
+
+        provider = SlackMessageProvider(
+            bot_token="xoxb-test",
+            client_id="slack:test",
+            app_token="xapp-test"
+        )
+
+        with pytest.raises(ValueError, match="Callback must be a callable"):
+            provider.register_reaction_listener("not_a_function")
+
+    def test_notify_reaction_listeners(self):
+        """Test that reaction listeners are notified with correct data."""
+        from message_provider.slack_message_provider import SlackMessageProvider
+
+        provider = SlackMessageProvider(
+            bot_token="xoxb-test",
+            client_id="slack:test",
+            app_token="xapp-test"
+        )
+
+        received_reactions = []
+        provider.register_reaction_listener(lambda r: received_reactions.append(r))
+
+        reaction_data = {
+            "message_id": "1234567890.123456",
+            "reaction": "thumbsup",
+            "user_id": "U123456",
+            "channel": "C123456",
+            "metadata": {"client_id": "slack:test"}
+        }
+
+        provider._notify_reaction_listeners(reaction_data)
+
+        assert len(received_reactions) == 1
+        assert received_reactions[0]["reaction"] == "thumbsup"
+        assert received_reactions[0]["message_id"] == "1234567890.123456"
+        assert received_reactions[0]["user_id"] == "U123456"
+        assert received_reactions[0]["channel"] == "C123456"
+
+    def test_reaction_listener_error_does_not_break_others(self):
+        """Test that a failing reaction listener doesn't prevent other listeners."""
+        from message_provider.slack_message_provider import SlackMessageProvider
+
+        provider = SlackMessageProvider(
+            bot_token="xoxb-test",
+            client_id="slack:test",
+            app_token="xapp-test"
+        )
+
+        results = []
+
+        def failing_listener(r):
+            raise Exception("Listener failed!")
+
+        def working_listener(r):
+            results.append(r)
+
+        provider.register_reaction_listener(failing_listener)
+        provider.register_reaction_listener(working_listener)
+
+        provider._notify_reaction_listeners({"reaction": "thumbsup"})
+
+        assert len(results) == 1
+
+    def test_notify_reaction_listeners_with_full_data(self):
+        """Test that _notify_reaction_listeners dispatches complete reaction data."""
+        from message_provider.slack_message_provider import SlackMessageProvider
+
+        provider = SlackMessageProvider(
+            bot_token="xoxb-test",
+            client_id="slack:test",
+            app_token="xapp-test"
+        )
+
+        received_reactions = []
+        provider.register_reaction_listener(lambda r: received_reactions.append(r))
+
+        reaction_data = {
+            "message_id": "1234567890.123456",
+            "reaction": "thumbsup",
+            "user_id": "U123456",
+            "channel": "C123456",
+            "metadata": {
+                "client_id": "slack:test",
+                "user_email": "user@example.com",
+                "event_ts": "1234567891.000000",
+            }
+        }
+
+        provider._notify_reaction_listeners(reaction_data)
+
+        assert len(received_reactions) == 1
+        assert received_reactions[0]["reaction"] == "thumbsup"
+        assert received_reactions[0]["message_id"] == "1234567890.123456"
+        assert received_reactions[0]["user_id"] == "U123456"
+        assert received_reactions[0]["channel"] == "C123456"
+        assert received_reactions[0]["metadata"]["user_email"] == "user@example.com"
+        assert received_reactions[0]["metadata"]["client_id"] == "slack:test"
+
+    def test_multiple_reaction_listeners(self):
+        """Test registering and notifying multiple reaction listeners."""
+        from message_provider.slack_message_provider import SlackMessageProvider
+
+        provider = SlackMessageProvider(
+            bot_token="xoxb-test",
+            client_id="slack:test",
+            app_token="xapp-test"
+        )
+
+        results1 = []
+        results2 = []
+
+        provider.register_reaction_listener(lambda r: results1.append(r))
+        provider.register_reaction_listener(lambda r: results2.append(r))
+
+        assert len(provider.reaction_listeners) == 2
+
+        provider._notify_reaction_listeners({"reaction": "heart"})
+
+        assert len(results1) == 1
+        assert len(results2) == 1
+        assert results1[0]["reaction"] == "heart"

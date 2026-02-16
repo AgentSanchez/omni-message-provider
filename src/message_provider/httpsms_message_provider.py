@@ -344,6 +344,10 @@ class HttpSmsMessageProvider(MessageProvider):
     def register_request_cancellation_listener(self, callback: Callable) -> None:
         pass
 
+    def register_reaction_listener(self, callback: Callable) -> None:
+        """SMS doesn't support reactions. No-op."""
+        log.debug("[HttpSmsMessageProvider] Reaction listeners not supported for SMS")
+
     def get_app(self) -> FastAPI:
         return self.app
 

@@ -638,3 +638,7 @@ class JiraMessageProvider(MessageProvider):
         if not callable(callback):
             raise ValueError("Callback must be a callable function")
         self.thread_clear_listeners.append(callback)
+
+    def register_reaction_listener(self, callback: Callable) -> None:
+        """Jira uses labels instead of reactions. No-op."""
+        log.debug("[JiraMessageProvider] Reaction listeners not supported for Jira (use labels)")

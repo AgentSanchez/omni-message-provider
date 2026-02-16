@@ -164,3 +164,19 @@ class MessageProvider(ABC):
             callback: Function called with (channel, metadata) when thread is cleared
         """
         pass
+
+    def register_reaction_listener(self, callback: Callable) -> None:
+        """
+        Register a callback to be called when reactions are received.
+
+        Callback receives a dict with:
+            - message_id: ID of the message that was reacted to
+            - reaction: The emoji/reaction name
+            - user_id: ID of the user who reacted
+            - channel: Channel/conversation where the reaction occurred
+            - metadata: Provider-specific metadata
+
+        Args:
+            callback: Function that takes a reaction dict as parameter
+        """
+        pass

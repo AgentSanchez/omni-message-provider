@@ -140,6 +140,7 @@ class SlackMessageProvider(MessageProvider):
 
         # Message listeners
         self.message_listeners = []
+        self.reaction_listeners = []
         self.thread_clear_listeners = []
 
         # Setup event handlers
@@ -260,6 +261,45 @@ class SlackMessageProvider(MessageProvider):
             # Notify all registered listeners
             self._notify_listeners(message_data)
 
+        @self.app.event("reaction_added")
+        def handle_reaction_added(event, say):
+            """Handle incoming Slack reactions."""
+            user_id = event.get("user")
+            reaction = event.get("reaction", "")
+            item = event.get("item", {})
+            item_type = item.get("type")
+
+            # Only handle reactions to messages
+            if item_type != "message":
+                return
+
+            channel = item.get("channel")
+            message_ts = item.get("ts")
+
+            if self.allowed_channels is not None:
+                if channel not in self.allowed_channels:
+                    if not self._is_allowed_channel_name(channel):
+                        return
+
+            user_email = self._get_user_email(user_id)
+
+            # Build reaction data
+            reaction_data = {
+                "message_id": message_ts,
+                "reaction": reaction,
+                "user_id": user_id,
+                "channel": channel,
+                "metadata": {
+                    "client_id": self.client_id,
+                    "user_email": user_email,
+                    "event_ts": event.get("event_ts"),
+                }
+            }
+
+            log.info(f"[SlackMessageProvider] Reaction :{reaction}: from {user_id} on {message_ts}")
+
+            self._notify_reaction_listeners(reaction_data)
+
     def _handle_slack_api_error(self, e, operation: str) -> dict:
         """Log a SlackApiError with context. Permission errors are logged at warning level."""
         error_code = e.response.get("error", "unknown_error")
@@ -379,6 +419,14 @@ class SlackMessageProvider(MessageProvider):
                 listener(message_data)
             except Exception as e:
                 log.error(f"[SlackMessageProvider] Listener error: {str(e)}")
+
+    def _notify_reaction_listeners(self, reaction_data: dict):
+        """Notify all registered reaction listeners."""
+        for listener in self.reaction_listeners:
+            try:
+                listener(reaction_data)
+            except Exception as e:
+                log.error(f"[SlackMessageProvider] Reaction listener error: {str(e)}")
 
     def send_message(
         self,
@@ -593,3 +641,22 @@ class SlackMessageProvider(MessageProvider):
         if not callable(callback):
             raise ValueError("Callback must be a callable function")
         self.thread_clear_listeners.append(callback)
+
+    def register_reaction_listener(self, callback: Callable) -> None:
+        """
+        Register a callback for reaction events.
+
+        Callback receives a dict with:
+            - message_id: Slack message timestamp (ts)
+            - reaction: The emoji name (without colons)
+            - user_id: ID of the user who reacted
+            - channel: Channel where the reaction occurred
+            - metadata: Slack-specific metadata
+
+        Args:
+            callback: Function that takes a reaction dict as parameter
+        """
+        if not callable(callback):
+            raise ValueError("Callback must be a callable function")
+        self.reaction_listeners.append(callback)
+        log.info("[SlackMessageProvider] Registered reaction listener")

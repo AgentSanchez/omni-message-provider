@@ -415,6 +415,60 @@ POST /message/process
 }
 ```
 
+## Reaction Listeners
+
+Listen for incoming reactions (emojis) from users on messages:
+
+```python
+# Discord and Slack have native reaction support
+def reaction_handler(reaction):
+    print(f"User {reaction['user_id']} reacted with {reaction['reaction']}")
+    print(f"On message {reaction['message_id']} in {reaction['channel']}")
+
+    # Reaction data includes:
+    # - message_id: ID of the message that was reacted to
+    # - reaction: The emoji (e.g., "👍" or "thumbsup")
+    # - user_id: Who reacted
+    # - channel: Where the reaction occurred
+    # - metadata: Provider-specific metadata
+
+provider.register_reaction_listener(reaction_handler)
+```
+
+### FastAPI Reaction Endpoint
+
+HTTP clients can send reactions via `POST /reaction/process`:
+
+```python
+POST /reaction/process
+Authorization: Bearer <session_token>
+{
+    "message_id": "msg_abc123",
+    "reaction": "👍",
+    "user_id": "alice",
+    "channel": "subscriber-uuid"
+}
+```
+
+## Thread Clear Events
+
+Signal when a conversation should end. Useful for session management:
+
+```python
+def on_thread_clear(channel, metadata):
+    print(f"Conversation in {channel} ended: {metadata}")
+    # Clean up session state, context, etc.
+
+provider.register_thread_clear_listener(on_thread_clear)
+
+# Programmatically end a conversation
+provider.clear_thread("channel-123", metadata={"reason": "task_complete"})
+```
+
+For httpSMS, users can type `/clear` to trigger this event.
+
+## Unified Message Types
+
 The orchestrator receives all message types through the same listener and handles them based on type:
 
 ```python
@@ -509,6 +563,15 @@ class MessageProvider:
 
     def register_message_listener(callback: Callable) -> None:
         """Register callback for incoming messages"""
+
+    def register_reaction_listener(callback: Callable) -> None:
+        """Register callback for incoming reactions (Discord, Slack, FastAPI)"""
+
+    def clear_thread(channel: str, metadata: dict = None) -> dict:
+        """Signal that a conversation should end"""
+
+    def register_thread_clear_listener(callback: Callable) -> None:
+        """Register callback for thread clear events"""
 
     def start() -> None:
         """Start the provider (blocking)"""
