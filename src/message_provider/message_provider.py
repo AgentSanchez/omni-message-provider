@@ -36,13 +36,14 @@ class MessageProvider(ABC):
         pass
 
     @abstractmethod
-    def send_reaction(self, message_id: str, reaction: str):
+    def send_reaction(self, message_id: str, reaction: str, channel: Optional[str] = None):
         """
         Add a reaction to a message.
 
         Args:
             message_id: ID of the message to react to
             reaction: Reaction to add (emoji, label, etc.)
+            channel: Optional channel/context (required for some providers)
 
         Returns:
             Dict with success status
@@ -50,13 +51,14 @@ class MessageProvider(ABC):
         pass
 
     @abstractmethod
-    def update_message(self, message_id: str, new_text: str):
+    def update_message(self, message_id: str, new_text: str, channel: Optional[str] = None):
         """
         Update an existing message.
 
         Args:
             message_id: ID of the message to update
             new_text: New message text (or status for platforms like Jira)
+            channel: Optional channel/context (required for some providers)
 
         Returns:
             Dict with success status

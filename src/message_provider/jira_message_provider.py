@@ -462,13 +462,14 @@ class JiraMessageProvider(MessageProvider):
                 "error": str(e)
             }
 
-    def send_reaction(self, message_id: str, reaction: str) -> dict:
+    def send_reaction(self, message_id: str, reaction: str, channel: Optional[str] = None) -> dict:
         """
         Add a label to a Jira issue.
 
         Args:
             message_id: Jira issue key (e.g., "SUPPORT-123")
             reaction: Label to add (e.g., "bot-processed", "acknowledged")
+            channel: Unused (Jira uses message_id as issue key)
 
         Returns:
             Dict with success status
@@ -499,13 +500,14 @@ class JiraMessageProvider(MessageProvider):
                 "error": str(e)
             }
 
-    def update_message(self, message_id: str, new_text: str) -> dict:
+    def update_message(self, message_id: str, new_text: str, channel: Optional[str] = None) -> dict:
         """
         Update a Jira ticket's status.
 
         Args:
             message_id: Jira issue key (e.g., "SUPPORT-123")
             new_text: New status name (e.g., "In Progress", "Done", "Closed")
+            channel: Unused (Jira uses message_id as issue key)
 
         Returns:
             Dict with success status

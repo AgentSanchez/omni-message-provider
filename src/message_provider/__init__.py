@@ -2,7 +2,7 @@
 
 from typing import TYPE_CHECKING, Literal, Type, overload
 
-__version__ = "0.2.9"
+__version__ = "0.2.10"
 
 # Import base classes and components without optional dependencies
 from message_provider.message_provider import MessageProvider
