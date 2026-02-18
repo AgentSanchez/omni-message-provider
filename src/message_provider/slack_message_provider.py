@@ -193,6 +193,7 @@ class SlackMessageProvider(MessageProvider):
             user_email = self._get_user_email(user_id)
 
             message_data = {
+                "source_type": "slack",
                 "message_id": ts,
                 "text": text,
                 "user_id": user_id,
@@ -243,6 +244,7 @@ class SlackMessageProvider(MessageProvider):
 
             # Build message data compatible with MessageProvider interface
             message_data = {
+                "source_type": "slack",
                 "message_id": ts,
                 "text": text,
                 "user_id": user_id,
@@ -285,6 +287,7 @@ class SlackMessageProvider(MessageProvider):
 
             # Build reaction data
             reaction_data = {
+                "source_type": "slack",
                 "message_id": message_ts,
                 "reaction": reaction,
                 "user_id": user_id,

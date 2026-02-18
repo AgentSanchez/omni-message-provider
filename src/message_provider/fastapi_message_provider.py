@@ -428,6 +428,7 @@ class FastAPIMessageProvider(MessageProvider):
         channel = context.get("channel")
         if channel and channel in self.registered_subscribers:
             status_message = {
+                "source_type": "api",
                 "type": "status_update",
                 "message_id": request_id,
                 "user_id": context.get("user_id"),
@@ -615,6 +616,7 @@ class FastAPIMessageProvider(MessageProvider):
 
             # Build message data - passed directly to orchestrator
             message_data = {
+                "source_type": "api",
                 "type": message.type,
                 "message_id": message_id,
                 "text": message.text,
@@ -674,6 +676,7 @@ class FastAPIMessageProvider(MessageProvider):
 
             # Build reaction data
             reaction_data = {
+                "source_type": "api",
                 "message_id": reaction.message_id,
                 "reaction": reaction.reaction,
                 "user_id": reaction.user_id,

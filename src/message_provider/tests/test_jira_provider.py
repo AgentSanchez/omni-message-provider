@@ -344,6 +344,56 @@ class TestJiraMessageProvider:
         provider._poll_comments(None)
         assert listener.call_count == 1
 
+    @patch('message_provider.jira_message_provider.JIRA')
+    def test_bot_own_comments_skipped(self, mock_jira_class):
+        """Test that the bot's own comments are not dispatched."""
+        from message_provider.jira_message_provider import JiraMessageProvider
+
+        mock_jira = MagicMock()
+        mock_jira_class.return_value = mock_jira
+        mock_jira.myself.return_value = {"accountId": "bot-account-123"}
+
+        provider = JiraMessageProvider(
+            server="https://jira.example.com",
+            email="test@example.com",
+            api_token="token123",
+            project_keys=["PROJECT"],
+            client_id="jira:test",
+            watch_labels=["bot-watching"],
+            ignore_existing_on_startup=False,
+            startup_delay=0
+        )
+
+        mock_issue = MagicMock()
+        mock_issue.key = "PROJECT-1"
+        mock_issue.fields.labels = ["bot-watching"]
+        mock_issue.fields.summary = "Test"
+        mock_issue.fields.project = MagicMock(key="PROJECT")
+
+        # Comment from the bot itself
+        bot_comment = MagicMock()
+        bot_comment.id = "200"
+        bot_comment.created = "2099-01-01T00:00:01.000+0000"
+        bot_comment.body = "I'm the bot responding"
+        bot_comment.author = MagicMock(accountId="bot-account-123", displayName="Bot")
+
+        # Comment from a real user
+        user_comment = MagicMock()
+        user_comment.id = "201"
+        user_comment.created = "2099-01-01T00:00:02.000+0000"
+        user_comment.body = "I'm a human"
+        user_comment.author = MagicMock(accountId="human-456", displayName="Human")
+
+        mock_jira.search_issues.return_value = [mock_issue]
+        mock_jira.comments.return_value = [bot_comment, user_comment]
+
+        listener = MagicMock()
+        provider.register_message_listener(listener)
+
+        provider._poll_comments(None)
+        assert listener.call_count == 1
+        assert listener.call_args.args[0]["text"] == "I'm a human"
+
     def test_init_invalid_trigger_mode(self):
         """Test that invalid trigger_mode raises ValueError."""
         from message_provider.jira_message_provider import JiraMessageProvider
@@ -689,7 +739,7 @@ class TestJiraTriggerModeIntegration:
         assert "nothing special" not in dispatched_bodies
 
     def test_chat_mode_scenario(self):
-        """chat: all 4 issues dispatched; comments = 3 (label + phrase matches)."""
+        """chat: all 4 issues dispatched; comments = only label-matched (no phrases in chat)."""
         provider, listener, mock_jira, issues, comment_issues = self._make_provider("chat")
 
         # Poll issues — all dispatched regardless of phrases
@@ -701,17 +751,18 @@ class TestJiraTriggerModeIntegration:
 
         listener.reset_mock()
 
-        # Poll comments — label matches + phrase matches, but not "nothing special"
+        # Poll comments — only label matches; phrases are NOT checked in chat mode
         mock_jira.search_issues.return_value = comment_issues
         provider._poll_comments(None)
-        assert listener.call_count == 3
+        assert listener.call_count == 2
         dispatched_bodies = [call.args[0]["text"] for call in listener.call_args_list]
-        assert dispatched_bodies == ["just an update", "hey @bot help", "escalate this please"]
-        # Verify no-match comment was excluded
+        assert dispatched_bodies == ["just an update", "hey @bot help"]
+        # Phrase-only and no-match comments excluded
+        assert "escalate this please" not in dispatched_bodies
         assert "nothing special" not in dispatched_bodies
 
     def test_both_mode_scenario(self):
-        """both (default): same as chat — all 4 issues, 3 comments."""
+        """both: all 4 issues; comments = label + phrase matches."""
         provider, listener, mock_jira, issues, comment_issues = self._make_provider("both")
 
         # Poll issues — all dispatched
@@ -723,7 +774,7 @@ class TestJiraTriggerModeIntegration:
 
         listener.reset_mock()
 
-        # Poll comments — label + phrase, excluding no-match
+        # Poll comments — label matches + phrase matches, but not "nothing special"
         mock_jira.search_issues.return_value = comment_issues
         provider._poll_comments(None)
         assert listener.call_count == 3
@@ -770,10 +821,10 @@ class TestJiraTriggerModeIntegration:
 
         mock_jira.search_issues.return_value = comment_issues
         provider._poll_comments(None)
-        assert listener.call_count == 3
+        assert listener.call_count == 2  # only label-matched
 
         provider._poll_comments(None)
-        assert listener.call_count == 3  # no new dispatches
+        assert listener.call_count == 2  # no new dispatches
 
     def test_mention_mode_metadata_matches(self):
         """mention: dispatched comments carry correct matched_phrase metadata."""
@@ -794,7 +845,7 @@ class TestJiraTriggerModeIntegration:
         assert meta_by_text["escalate this please"]["matched_label"] is None
 
     def test_chat_mode_metadata_matches(self):
-        """chat: label-matched comments carry matched_label, phrase-only carry matched_phrase."""
+        """chat: label-matched comments carry matched_label; no phrases checked."""
         provider, listener, mock_jira, issues, comment_issues = self._make_provider("chat")
 
         mock_jira.search_issues.return_value = comment_issues
@@ -810,6 +861,5 @@ class TestJiraTriggerModeIntegration:
         # Label takes precedence: "hey @bot help" on labeled issue matched via label first
         assert meta_by_text["hey @bot help"]["matched_label"] == "bot-watching"
         assert meta_by_text["hey @bot help"]["matched_phrase"] is None
-        # Phrase-only: "escalate this please" on non-labeled issue
-        assert meta_by_text["escalate this please"]["matched_phrase"] == "escalate"
-        assert meta_by_text["escalate this please"]["matched_label"] is None
+        # Phrase-only comments are NOT dispatched in chat mode
+        assert "escalate this please" not in meta_by_text

@@ -133,6 +133,7 @@ class DiscordMessageProvider(MessageProvider):
 
             # Build message data compatible with MessageProvider interface
             message_data = {
+                "source_type": "discord",
                 "message_id": message_id,
                 "text": text,
                 "user_id": user_id,
@@ -187,6 +188,7 @@ class DiscordMessageProvider(MessageProvider):
 
             # Build reaction data
             reaction_data = {
+                "source_type": "discord",
                 "message_id": message_id,
                 "reaction": emoji_str,
                 "user_id": str(user.id),

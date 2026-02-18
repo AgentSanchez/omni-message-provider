@@ -117,7 +117,8 @@ class JiraMessageProvider(MessageProvider):
                 server=server,
                 basic_auth=(email, api_token)
             )
-            log.info(f"[JiraMessageProvider] Connected to {server}")
+            self._my_account_id = self.jira.myself().get("accountId")
+            log.info(f"[JiraMessageProvider] Connected to {server} as {self._my_account_id}")
         except JIRAError as e:
             log.error(f"[JiraMessageProvider] Failed to connect to Jira: {e}")
             raise
@@ -295,6 +296,7 @@ class JiraMessageProvider(MessageProvider):
         project = issue.fields.project
 
         message_data = {
+            "source_type": "jira",
             "type": "new_issue",
             "message_id": issue.key,
             "text": text,
@@ -324,15 +326,17 @@ class JiraMessageProvider(MessageProvider):
             return  # Nothing to poll
 
         try:
-            # Build JQL for watched labels
+            # Build JQL based on trigger_mode:
+            #   mention — only scan projects for phrase-matching comments
+            #   chat    — only scan labeled issues
+            #   both    — scan labeled issues + projects for phrases
             jql_parts = []
 
-            if self.watch_labels:
+            if self.watch_labels and self.trigger_mode != "mention":
                 label_filter = " OR ".join([f'labels = "{label}"' for label in self.watch_labels])
                 jql_parts.append(f"({label_filter})")
 
-            if self.trigger_phrases:
-                # For trigger phrases, we need to check all updated issues in projects
+            if self.trigger_phrases and self.trigger_mode != "chat":
                 project_filter = " OR ".join([f'project = "{key}"' for key in self.project_keys])
                 jql_parts.append(f"({project_filter})")
 
@@ -375,6 +379,11 @@ class JiraMessageProvider(MessageProvider):
                     if previous_poll_time and comment_created_utc <= previous_poll_time:
                         continue
 
+                    # Skip bot's own comments
+                    author_id = comment.author.accountId if comment.author else None
+                    if author_id and author_id == self._my_account_id:
+                        continue
+
                     # Check if matches criteria
                     matches = False
                     matched_label = None
@@ -389,8 +398,8 @@ class JiraMessageProvider(MessageProvider):
                                 matched_label = label
                                 break
 
-                    # Check trigger phrases
-                    if self.trigger_phrases and not matches:
+                    # Check trigger phrases (skip in chat mode — only labels count)
+                    if not matches and self.trigger_phrases and self.trigger_mode != "chat":
                         comment_body = comment.body.lower()
                         for phrase in self.trigger_phrases:
                             if phrase.lower() in comment_body:
@@ -411,6 +420,7 @@ class JiraMessageProvider(MessageProvider):
 
                     # Convert to message format
                     message_data = {
+                        "source_type": "jira",
                         "type": "new_comment",
                         "message_id": comment_key,
                         "text": comment.body,

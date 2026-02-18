@@ -107,6 +107,7 @@ class PrometheusWebhookProvider(WebhookProvider):
 
             if self.parse_mode == "raw":
                 message_data = {
+                    "source_type": "prometheus",
                     "type": "alert",
                     "text": str(payload),
                     "channel": self.client_id,
@@ -163,6 +164,7 @@ class PrometheusWebhookProvider(WebhookProvider):
             channel = group_key or labels.get("alertname", self.client_id)
 
             alert_data = {
+                "source_type": "prometheus",
                 "type": "alert",
                 "alert_id": alert_id,
                 "status": status,

@@ -188,6 +188,7 @@ class HttpSmsMessageProvider(MessageProvider):
 
             # Build message - channel is the sender's phone number
             message_data = {
+                "source_type": "httpsms",
                 "type": "message",
                 "message_id": message_id,
                 "text": content,

@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.13] - 2026-02-18
+
+### Added
+- **All providers**: `source_type` field in all dispatched message/reaction dicts (`"jira"`, `"slack"`, `"discord"`, `"api"`, `"httpsms"`, `"prometheus"`)
+- **Jira**: Bot skips its own comments — `_my_account_id` fetched at init, own comments filtered in `_poll_comments`
+- **Jira**: Integration tests for `trigger_mode` — scenario-style tests covering mention/chat/both modes with dedup and metadata assertions
+
+### Changed
+- **Jira**: `trigger_mode` comment matching refined — `chat` mode uses labels only (no phrase matching), `mention` uses phrases only (no labels), `both` uses labels + phrases
+
 ## [0.2.12] - 2026-02-18
 
 ### Added
