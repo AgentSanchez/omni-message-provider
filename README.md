@@ -1,11 +1,12 @@
 # Omni Message Provider
 
-A unified Python interface for building chatbots and automated systems across multiple messaging platforms (Discord, Slack, Jira, httpSMS) with optional distributed relay support for scalable deployments.
+A unified Python interface for building chatbots and automated systems across multiple messaging platforms (Discord, Slack, Jira, httpSMS) with optional distributed relay support for scalable deployments. Also supports inbound-only webhook providers (Prometheus Alertmanager).
 
 ## Features
 
 - **Unified Interface**: Single `MessageProvider` interface for all platforms
-- **Multiple Platforms**: Discord, Slack, Jira, httpSMS, FastAPI (HTTP/REST), and polling clients
+- **Webhook Providers**: Inbound-only `WebhookProvider` base class for services that push data in (Prometheus Alertmanager)
+- **Multiple Platforms**: Discord, Slack, Jira, httpSMS, Prometheus, FastAPI (HTTP/REST), and polling clients
 - **Distributed Architecture**: Optional WebSocket relay for microservices deployments
 - **Authentication Layer**: Pluggable authentication for HTTP provider
 - **Request Tracking**: Status updates and cancellation support
@@ -191,6 +192,131 @@ provider.start()  # Starts webhook server on port 9548
 # Programmatically end a conversation:
 # provider.clear_thread("+15559876543", metadata={"reason": "task_complete"})
 ```
+
+### Prometheus Alertmanager Webhook
+
+`PrometheusWebhookProvider` is an inbound-only provider that receives [Prometheus Alertmanager](https://prometheus.io/docs/alerting/latest/configuration/#webhook_config) webhook POSTs. Unlike `MessageProvider`, it extends `WebhookProvider` — a separate base class for services that only push data in (no send_message, send_reaction, etc.).
+
+```python
+import os
+from message_provider import PrometheusWebhookProvider
+
+provider = PrometheusWebhookProvider(
+    client_id="prometheus:prod",
+    parse_mode="alertmanager",  # or "raw" for full payload pass-through
+    api_key=os.getenv("WEBHOOK_API_KEY"),  # Optional auth
+    port=9549,
+)
+
+def alert_handler(alert):
+    status = alert['status']       # "firing" or "resolved"
+    text = alert['text']           # annotations.summary or description
+    labels = alert['labels']       # { "alertname": "...", "severity": "...", ... }
+    alert_id = alert['alert_id']   # fingerprint
+
+    print(f"[{status.upper()}] {labels.get('alertname')}: {text}")
+
+provider.register_message_listener(alert_handler)
+provider.start()  # Starts webhook server on port 9549
+```
+
+Configure Alertmanager to POST to `http://your-host:9549/webhook`.
+
+#### Constructor Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `client_id` | `str` | `"prometheus:default"` | Unique identifier for this provider instance |
+| `parse_mode` | `str` | `"alertmanager"` | `"alertmanager"` to normalize per-alert, or `"raw"` for full payload pass-through |
+| `api_key` | `str \| None` | `None` | Optional Bearer token for authenticating incoming webhooks |
+| `host` | `str` | `"0.0.0.0"` | Webhook server bind address |
+| `port` | `int` | `9549` | Webhook server port |
+| `webhook_path` | `str` | `"/webhook"` | Path for the webhook endpoint |
+
+#### Parse Modes
+
+**`"alertmanager"` (default)** — Parses the standard Alertmanager payload and emits one listener call **per alert** with normalized fields:
+
+```python
+{
+    "type": "alert",
+    "alert_id": "abc123",              # fingerprint (or generated UUID)
+    "status": "firing",                # "firing" or "resolved"
+    "text": "Memory usage is above 90%",  # annotations.summary or .description
+    "labels": {"alertname": "HighMemory", "severity": "critical", ...},
+    "annotations": {"summary": "...", "description": "...", ...},
+    "starts_at": "2026-02-18T10:00:00.000Z",
+    "ends_at": "0001-01-01T00:00:00Z",  # or actual end time for resolved
+    "generator_url": "http://prometheus:9090/graph?...",
+    "channel": "{}:{alertname=\"HighMemory\"}",  # groupKey or alertname
+    "metadata": {
+        "client_id": "prometheus:prod",
+        "receiver": "webhook-test",
+        "external_url": "http://alertmanager:9093",
+        "group_labels": {"alertname": "HighMemory"},
+        "common_labels": {...},
+        "common_annotations": {...},
+        "raw_payload": {...}           # full original Alertmanager payload
+    },
+    "timestamp": "2026-02-18T10:00:05.123Z"  # when the webhook was received
+}
+```
+
+**`"raw"`** — Passes the entire JSON body as-is. One listener call per POST regardless of how many alerts are in the payload:
+
+```python
+{
+    "type": "alert",
+    "text": "<str representation of payload>",
+    "channel": "prometheus:prod",      # client_id
+    "metadata": {
+        "client_id": "prometheus:prod",
+        "raw_payload": {...}           # full original payload
+    },
+    "timestamp": "2026-02-18T10:00:05.123Z"
+}
+```
+
+#### API Key Authentication
+
+When `api_key` is set, every POST to the webhook endpoint must include an `Authorization` header:
+
+```
+Authorization: Bearer <your-api-key>
+```
+
+Requests without a valid key receive `401 Unauthorized`. The `GET /health` endpoint is always unauthenticated.
+
+#### Alertmanager Configuration
+
+Point Alertmanager's webhook receiver at your provider:
+
+```yaml
+# alertmanager.yml
+receivers:
+  - name: 'omni-webhook'
+    webhook_configs:
+      - url: 'http://your-host:9549/webhook'
+        # If using api_key authentication:
+        http_config:
+          authorization:
+            type: Bearer
+            credentials: 'your-api-key'
+```
+
+#### Testing Locally
+
+Two example scripts are provided for local development:
+
+```bash
+# Terminal 1: Start the listener
+python -m message_provider.examples.prom_example
+
+# Terminal 2: Fire a test alert
+python -m message_provider.examples.test_prom_alert localhost:9549
+```
+
+`test_prom_alert.py` sends a realistic Alertmanager payload to the given host:port. Use `--resolved` to send a resolved alert, `--api-key` to include auth, and `--raw` to send a minimal non-Alertmanager payload. See `--help` for all options.
 
 ### FastAPI/HTTP Provider
 
@@ -629,6 +755,15 @@ Providers are stateless -- they do not cache message or channel metadata interna
 - `get_formatting_rules()` → Returns "plaintext"
 - **Setup:** [httpSMS GitHub](https://github.com/NdoleStudio/httpsms)
 
+### Prometheus Alertmanager (WebhookProvider)
+- `client_id` = Provider instance identifier (e.g., "prometheus:prod")
+- `channel` = groupKey or alertname
+- Inbound-only: no `send_message`, `send_reaction`, `update_message`
+- `register_message_listener()` receives normalized alert dicts
+- `parse_mode="alertmanager"` → one listener call per alert
+- `parse_mode="raw"` → one listener call with full payload
+- `get_formatting_rules()` → Returns "plaintext"
+
 ### FastAPI/HTTP
 - `provider_id` = Provider instance identifier (e.g., "http:my-service")
 - `channel` = Subscriber UUID (returned at registration)
@@ -727,6 +862,8 @@ See the `src/message_provider/examples/` directory for complete working examples
 - `jira_example.py` - Jira issue monitor
 - `relay_example.py` - Distributed relay setup
 - `polling_client_example.py` - FastAPI polling client with status tracking
+- `prom_example.py` - Prometheus Alertmanager webhook listener
+- `test_prom_alert.py` - Fire test alerts at a running Prometheus provider
 
 ## Development
 

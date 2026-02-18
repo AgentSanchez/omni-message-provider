@@ -8,6 +8,8 @@ __version__ = "0.2.8"
 from message_provider.message_provider import MessageProvider
 from message_provider.fastapi_message_provider import FastAPIMessageProvider
 from message_provider.httpsms_message_provider import HttpSmsMessageProvider
+from message_provider.webhook_provider import WebhookProvider
+from message_provider.prometheus_webhook_provider import PrometheusWebhookProvider
 from message_provider.relay.relay_hub import RelayHub
 from message_provider.relay.relay_message_provider import RelayMessageProvider
 from message_provider.relay.relay_client import RelayClient
@@ -16,6 +18,8 @@ __all__ = [
     "MessageProvider",
     "FastAPIMessageProvider",
     "HttpSmsMessageProvider",
+    "WebhookProvider",
+    "PrometheusWebhookProvider",
     "SlackMessageProvider",
     "DiscordMessageProvider",
     "JiraMessageProvider",

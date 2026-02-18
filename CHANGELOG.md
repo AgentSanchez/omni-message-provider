@@ -5,9 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.8] - 2026-02-16
+## [0.2.8] - 2026-02-18
 
 ### Added
+- **WebhookProvider**: New `WebhookProvider` abstract base class for inbound-only webhook providers
+  - Separate from `MessageProvider` — no send_message, send_reaction, update_message, etc.
+  - Minimal interface: `register_message_listener`, `start`, `get_app`, `get_formatting_rules`
+- **PrometheusWebhookProvider**: Receive Prometheus Alertmanager webhook alerts
+  - Accepts Alertmanager webhook POSTs at a configurable endpoint (default `/webhook`)
+  - `parse_mode="alertmanager"` (default): Parse standard payload, emit one call per alert with normalized fields
+  - `parse_mode="raw"`: Pass through entire JSON payload as-is to listeners
+  - Optional `api_key` parameter for simple Bearer token auth
+  - Health check at `GET /health`
+  - Configurable `client_id`, `host`, `port`, `webhook_path`
 - **Reaction Listeners**: New `register_reaction_listener(callback)` method across all providers
   - Discord: Listen to emoji reactions via `on_reaction_add` event
   - Slack: Listen to reactions via `reaction_added` event
@@ -129,6 +139,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Example files for all providers and relay components
 - Test documentation with coverage guidelines
 
+[0.2.8]: https://github.com/AgentSanchez/omni-message-provider/releases/tag/v0.2.8
 [0.2.7]: https://github.com/AgentSanchez/omni-message-provider/releases/tag/v0.2.7
 [0.2.6]: https://github.com/AgentSanchez/omni-message-provider/releases/tag/v0.2.6
 [0.2.5]: https://github.com/AgentSanchez/omni-message-provider/releases/tag/v0.2.5
