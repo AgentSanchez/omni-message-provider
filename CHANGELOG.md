@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.11] - 2026-02-18
+
+### Added
+- **Jira**: `trigger_mode` parameter (`mention`/`chat`/`both`) — in mention mode, only issues and comments containing trigger phrases are dispatched
+
 ## [0.2.10] - 2026-02-18
 
 ### Added
@@ -19,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Health check at `GET /health`
   - Configurable `client_id`, `host`, `port`, `webhook_path`
 - Prometheus example scripts: `prom_example.py` (listener) and `test_prom_alert.py` (test alert sender)
+- **Jira**: `startup_delay` parameter (default 120s) — delays first poll to avoid re-processing old events on restart
+- **Jira**: In-memory dedup of seen issue/comment IDs prevents re-dispatch within a run
 
 ### Changed
 - `MessageProvider.send_reaction()` and `MessageProvider.update_message()` now include `channel: Optional[str] = None` in the base ABC signature
@@ -148,6 +155,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Example files for all providers and relay components
 - Test documentation with coverage guidelines
 
+[0.2.11]: https://github.com/AgentSanchez/omni-message-provider/releases/tag/v0.2.11
 [0.2.10]: https://github.com/AgentSanchez/omni-message-provider/releases/tag/v0.2.10
 [0.2.8]: https://github.com/AgentSanchez/omni-message-provider/releases/tag/v0.2.8
 [0.2.7]: https://github.com/AgentSanchez/omni-message-provider/releases/tag/v0.2.7

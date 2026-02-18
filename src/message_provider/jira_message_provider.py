@@ -37,6 +37,9 @@ class JiraMessageProvider(MessageProvider):
         poll_interval: Seconds between polls. Default: 60
         initial_lookback: Minutes to look back on first poll. Default: 1440 (24 hours)
         ignore_existing_on_startup: If True, ignore issues/comments created before startup. Default: True
+        startup_delay: Seconds to wait before the first poll. Default: 120.
+            When > 0, the first poll uses startup_time (not initial_lookback) as its lookback origin,
+            so only events created during the grace period are picked up. Set to 0 for immediate polling.
 
     Usage:
         provider = JiraMessageProvider(
@@ -64,7 +67,9 @@ class JiraMessageProvider(MessageProvider):
         trigger_phrases: Optional[List[str]] = None,
         poll_interval: int = 60,
         initial_lookback: int = 1440,
-        ignore_existing_on_startup: bool = True
+        ignore_existing_on_startup: bool = True,
+        startup_delay: int = 120,
+        trigger_mode: str = "both"
     ):
         super().__init__()
 
@@ -84,6 +89,8 @@ class JiraMessageProvider(MessageProvider):
             raise ValueError("At least one project_key is required")
         if not client_id:
             raise ValueError("client_id is required")
+        if trigger_mode not in ("mention", "chat", "both"):
+            raise ValueError("trigger_mode must be 'mention', 'chat', or 'both'")
 
         self.server = server
         self.email = email
@@ -95,7 +102,14 @@ class JiraMessageProvider(MessageProvider):
         self.poll_interval = poll_interval
         self.initial_lookback = initial_lookback
         self.ignore_existing_on_startup = ignore_existing_on_startup
+        self.startup_delay = startup_delay
+        self.trigger_mode = trigger_mode
         self.startup_time = datetime.utcnow()
+
+        # In-memory dedup sets
+        self._seen_issue_ids: set = set()
+        self._seen_comment_ids: set = set()
+        self._seen_set_cap = 10_000
 
         # Connect to Jira
         try:
@@ -127,6 +141,15 @@ class JiraMessageProvider(MessageProvider):
             log.info(f"  Trigger phrases: {', '.join(self.trigger_phrases)}")
         if self.ignore_existing_on_startup:
             log.info(f"  Ignore existing issues/comments before: {self.startup_time.isoformat()}Z")
+        if self.startup_delay > 0:
+            log.info(f"  Startup delay: {self.startup_delay}s (first poll delayed)")
+
+    def _contains_trigger_phrase(self, text: str) -> bool:
+        """Case-insensitive check whether text contains any trigger phrase."""
+        if not self.trigger_phrases:
+            return False
+        text_lower = text.lower()
+        return any(phrase.lower() in text_lower for phrase in self.trigger_phrases)
 
     @staticmethod
     def _parse_jira_datetime(value: Optional[str]) -> Optional[datetime]:
@@ -231,6 +254,17 @@ class JiraMessageProvider(MessageProvider):
                 if previous_poll_time and issue_created_utc <= previous_poll_time:
                     continue
 
+                # Skip already-seen issues (in-memory dedup)
+                if issue.key in self._seen_issue_ids:
+                    continue
+
+                # In mention mode, skip issues without a trigger phrase
+                if self.trigger_mode == "mention":
+                    summary = issue.fields.summary or ""
+                    description = issue.fields.description or ""
+                    if not self._contains_trigger_phrase(summary + " " + description):
+                        continue
+
                 new_issues_count += 1
 
                 # Convert to message format
@@ -239,6 +273,7 @@ class JiraMessageProvider(MessageProvider):
                 # Notify listeners
                 log.info(f"[JiraMessageProvider] New issue: {issue.key}")
                 self._notify_listeners(message_data)
+                self._seen_issue_ids.add(issue.key)
 
             if new_issues_count > 0:
                 log.info(f"[JiraMessageProvider] Processed {new_issues_count} new issue(s)")
@@ -345,8 +380,8 @@ class JiraMessageProvider(MessageProvider):
                     matched_label = None
                     matched_phrase = None
 
-                    # Check watch labels
-                    if self.watch_labels:
+                    # Check watch labels (skip in mention mode — only phrases count)
+                    if self.watch_labels and self.trigger_mode != "mention":
                         issue_labels = set(issue.fields.labels or [])
                         for label in self.watch_labels:
                             if label in issue_labels:
@@ -366,8 +401,13 @@ class JiraMessageProvider(MessageProvider):
                     if not matches:
                         continue
 
-                    new_comments_count += 1
                     comment_key = f"{issue.key}#comment-{comment.id}"
+
+                    # Skip already-seen comments (in-memory dedup)
+                    if comment_key in self._seen_comment_ids:
+                        continue
+
+                    new_comments_count += 1
 
                     # Convert to message format
                     message_data = {
@@ -393,6 +433,7 @@ class JiraMessageProvider(MessageProvider):
                     # Notify listeners
                     log.info(f"[JiraMessageProvider] New comment on {issue.key} by {message_data['metadata']['author_name']}")
                     self._notify_listeners(message_data)
+                    self._seen_comment_ids.add(comment_key)
 
             if new_comments_count > 0:
                 log.info(f"[JiraMessageProvider] Processed {new_comments_count} new comment(s)")
@@ -402,9 +443,23 @@ class JiraMessageProvider(MessageProvider):
         except Exception as e:
             log.error(f"[JiraMessageProvider] Error polling comments: {str(e)}")
 
+    def _cap_seen_sets(self):
+        """Cap seen sets at _seen_set_cap entries, dropping oldest when exceeded."""
+        for seen_set in (self._seen_issue_ids, self._seen_comment_ids):
+            while len(seen_set) > self._seen_set_cap:
+                seen_set.pop()
+
     def _polling_loop(self):
         """Main polling loop running in background thread."""
         log.info(f"[JiraMessageProvider] Polling started (interval: {self.poll_interval}s)")
+
+        # Startup grace period: delay first poll so JQL only sees events after startup
+        if self.startup_delay > 0:
+            log.info(f"[JiraMessageProvider] Startup delay: waiting {self.startup_delay}s before first poll")
+            time.sleep(self.startup_delay)
+            # Set last_poll_time to startup_time so JQL only looks back to startup, not initial_lookback
+            self.last_poll_time = self.startup_time
+            log.info("[JiraMessageProvider] Startup delay complete, beginning polling")
 
         while self.running:
             try:
@@ -413,6 +468,7 @@ class JiraMessageProvider(MessageProvider):
                 self._poll_issues(previous_poll_time)
                 self._poll_comments(previous_poll_time)
                 self.last_poll_time = poll_start
+                self._cap_seen_sets()
             except Exception as e:
                 log.error(f"[JiraMessageProvider] Unexpected error in polling loop: {str(e)}")
 
