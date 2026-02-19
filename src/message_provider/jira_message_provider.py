@@ -117,11 +117,12 @@ class JiraMessageProvider(MessageProvider):
                 server=server,
                 basic_auth=(email, api_token)
             )
-            self._my_account_id = self.jira.myself().get("accountId")
-            log.info(f"[JiraMessageProvider] Connected to {server} as {self._my_account_id}")
+            log.info(f"[JiraMessageProvider] Connected to {server}")
         except JIRAError as e:
             log.error(f"[JiraMessageProvider] Failed to connect to Jira: {e}")
             raise
+
+        self._my_account_id = None  # Resolved lazily on first poll
 
         # Message listeners
         self.message_listeners: List[Callable] = []
@@ -381,8 +382,15 @@ class JiraMessageProvider(MessageProvider):
 
                     # Skip bot's own comments
                     author_id = comment.author.accountId if comment.author else None
-                    if author_id and author_id == self._my_account_id:
-                        continue
+                    if author_id:
+                        if self._my_account_id is None:
+                            try:
+                                self._my_account_id = self.jira.myself().get("accountId")
+                                log.info(f"[JiraMessageProvider] Resolved own account ID: {self._my_account_id}")
+                            except Exception as e:
+                                log.warning(f"[JiraMessageProvider] Could not resolve own account ID (self-answer filtering disabled): {e}")
+                        if author_id == self._my_account_id:
+                            continue
 
                     # Check if matches criteria
                     matches = False
